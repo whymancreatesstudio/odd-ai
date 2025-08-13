@@ -1,12 +1,64 @@
-# React + Vite
+# ODD AI Tool
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A comprehensive tool for managing company information with dynamic industry learning and social media management.
 
-Currently, two official plugins are available:
+## Project Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```
+oddtool/
+├── frontend/          # React frontend application
+│   ├── src/          # React components and logic
+│   ├── public/       # Static assets
+│   ├── package.json  # Frontend dependencies
+│   └── vite.config.js # Build configuration
+├── backend/           # Backend files and documentation
+│   └── README.md     # Backend setup guide
+├── .env.example      # Environment variables template
+├── .gitignore        # Git ignore rules
+└── README.md         # This file
+```
 
-## Expanding the ESLint configuration
+## Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **Company Management**: Comprehensive company details form
+- **Dynamic Industries**: Smart learning system for new industries
+- **Social Media**: Standard platforms + unlimited custom additions
+- **Supabase Integration**: Real-time database backend
+- **Responsive Design**: Modern UI with Tailwind CSS
+
+## Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/whymancreatesstudio/odd-ai.git
+   cd odd-ai
+   ```
+
+2. **Set up frontend**
+   ```bash
+   cd frontend
+   npm install
+   cp .env.example .env
+   # Add your Supabase credentials to .env
+   npm run dev
+   ```
+
+3. **Set up database**
+   - Create Supabase project
+   - Run database migrations
+   - Configure environment variables
+
+## Tech Stack
+
+- **Frontend**: React, Vite, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL)
+- **Database**: Real-time with Row Level Security
+
+## Contributing
+
+- `main` branch: Production-ready code
+- `dev` branch: Development and testing
+
+## License
+
+[Add your license here]
