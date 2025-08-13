@@ -199,6 +199,33 @@ class CRMAPI {
         }
     }
 
+    // NEW: Save audit to database
+    static async saveAudit(companyData, crmData, audit, auditStatus) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/save-audit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    companyData,
+                    crmData,
+                    audit,
+                    auditStatus
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Save audit failed: ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Save audit API error:', error);
+            throw error;
+        }
+    }
+
     // Legacy: Specific search methods for convenience
     static async searchFunding(companyName) {
         return this.search(null, companyName, 'funding');

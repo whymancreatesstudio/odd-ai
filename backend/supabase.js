@@ -64,7 +64,7 @@ class SupabaseClient {
             const timestamp = new Date().toISOString();
 
             // 1. Save to companies table (basic profile)
-            const { data: companyData, error: companyError } = await this.supabase
+            const { data: savedCompanyData, error: companyError } = await this.supabase
                 .from('companies')
                 .insert([{
                     company_name: companyData.companyName,
@@ -101,12 +101,49 @@ class SupabaseClient {
             if (crmError) throw crmError;
 
             return {
-                company: companyData,
+                company: savedCompanyData,
                 crm: crmData,
                 message: 'Data saved successfully to both tables'
             };
         } catch (error) {
             throw new Error(`Failed to save final results: ${error.message}`);
+        }
+    }
+
+    // NEW: Save audit to database
+    async saveAudit(companyData, crmData, audit, auditStatus) {
+        try {
+            console.log('💾 Saving audit to database...');
+
+            // Save to audits table (you'll need to create this table)
+            const { data: auditResult, error: auditError } = await this.supabase
+                .from('audits')
+                .insert([{
+                    company_name: companyData.companyName,
+                    website: companyData.website,
+                    company_data: companyData,
+                    crm_data: crmData,
+                    audit_content: audit,
+                    audit_status: auditStatus,
+                    generated_date: new Date().toISOString()
+                }])
+                .select();
+
+            if (auditError) {
+                console.error('❌ Error saving audit:', auditError);
+                throw new Error(`Failed to save audit: ${auditError.message}`);
+            }
+
+            console.log('✅ Audit saved successfully!');
+            return {
+                success: true,
+                message: 'Audit saved successfully',
+                auditId: auditResult[0]?.id
+            };
+
+        } catch (error) {
+            console.error('❌ Error in saveAudit:', error);
+            throw error;
         }
     }
 }

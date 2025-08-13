@@ -233,6 +233,36 @@ app.post('/api/search/perplexity', async (req, res) => {
     }
 });
 
+// NEW: Save audit to database
+app.post('/api/save-audit', async (req, res) => {
+    try {
+        const { companyData, crmData, audit, auditStatus } = req.body;
+
+        if (!companyData || !crmData || !audit) {
+            return res.status(400).json({
+                error: 'Company data, CRM data, and audit are required'
+            });
+        }
+
+        // Save audit to database
+        const savedAudit = await supabase.saveAudit(
+            companyData,
+            crmData,
+            audit,
+            auditStatus
+        );
+
+        res.json({
+            success: true,
+            message: 'Audit saved successfully',
+            data: savedAudit
+        });
+    } catch (error) {
+        console.error('Save audit error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
     console.log(`🚀 CRM Search API server running on port ${PORT}`);

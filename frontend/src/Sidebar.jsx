@@ -13,8 +13,8 @@ const Sidebar = ({ onShowForm, currentPage }) => {
                     <button
                         onClick={onShowForm}
                         className={`w-full py-3 px-4 rounded-md text-left transition-colors duration-200 ${currentPage === 'form'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
                             }`}
                     >
                         <div className="flex items-center space-x-3">
@@ -27,8 +27,8 @@ const Sidebar = ({ onShowForm, currentPage }) => {
 
                     <button
                         className={`w-full py-3 px-4 rounded-md text-left transition-colors duration-200 ${currentPage === 'crm'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
                             }`}
                         disabled={currentPage === 'crm'}
                     >
@@ -39,6 +39,19 @@ const Sidebar = ({ onShowForm, currentPage }) => {
                             <span className="font-medium">CRM Insights</span>
                         </div>
                     </button>
+
+                    {currentPage === 'audit' && (
+                        <button
+                            className="w-full py-3 px-4 rounded-md text-left transition-colors duration-200 bg-purple-600 text-white"
+                        >
+                            <div className="flex items-center space-x-3">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                </svg>
+                                <span className="font-medium">Company Audit</span>
+                            </div>
+                        </button>
+                    )}
                 </div>
 
                 {/* Current Page Indicator */}
@@ -47,7 +60,9 @@ const Sidebar = ({ onShowForm, currentPage }) => {
                         Current Page
                     </div>
                     <div className="text-sm text-gray-300">
-                        {currentPage === 'form' ? 'Company Details Form' : 'AI-Powered CRM Insights'}
+                        {currentPage === 'form' ? 'Company Details Form' :
+                            currentPage === 'crm' ? 'AI-Powered CRM Insights' :
+                                'Comprehensive Company Audit'}
                     </div>
                 </div>
             </div>

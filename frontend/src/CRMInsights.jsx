@@ -12,7 +12,7 @@ const CRMInsights = ({ companyData, onBackToForm }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
     const [error, setError] = useState(null);
-    const [showRawData, setShowRawData] = useState(false);
+
     const [showBackConfirm, setShowBackConfirm] = useState(false);
     const [showNameConfirm, setShowNameConfirm] = useState(false);
     const [nameConfirmData, setNameConfirmData] = useState({ userInput: '', officialName: '' });
@@ -173,10 +173,15 @@ CRITICAL RULES:
             if (response.success) {
                 setSnackbar({
                     open: true,
-                    message: 'Company and CRM insights saved successfully!',
+                    message: 'Company and CRM insights saved successfully! Now generating audit...',
                     severity: 'success'
                 });
-                setTimeout(() => onBackToForm(), 2000); // Go back after showing success message
+
+                // Navigate to audit page after saving
+                setTimeout(() => {
+                    // Navigate to audit page with company data
+                    window.location.href = `/audit?company=${encodeURIComponent(JSON.stringify(companyData))}&crm=${encodeURIComponent(JSON.stringify(crmData))}`;
+                }, 2000);
             } else {
                 throw new Error(response.message || 'Failed to save data');
             }
@@ -266,17 +271,149 @@ CRITICAL RULES:
     if (!crmData) {
         return (
             <div className="min-h-screen bg-gray-50 py-8">
-                <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-8 text-center">
-                    <div className="text-yellow-500 text-6xl mb-4">⏳</div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">No CRM Data Available</h2>
-                    <p className="text-gray-600 mb-6">CRM insights haven't been generated yet.</p>
-                    <div className="space-x-4">
-                        <button onClick={runFullPipeline} className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
-                            Generate CRM Insights
-                        </button>
-                        <button onClick={onBackToForm} className="bg-gray-600 text-white px-6 py-2 rounded-md hover:bg-gray-700">
-                            Back to Form
-                        </button>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Demo Header */}
+                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <div className="text-center">
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">📊 CRM Insights Preview</h1>
+                            <p className="text-gray-600 mb-4">This is what your CRM insights will look like after entering company details</p>
+                            <button
+                                onClick={onBackToForm}
+                                className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700"
+                            >
+                                ← Go to Company Form to Get Started
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Demo CRM Content */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Finance Overview */}
+                        <div className="bg-white rounded-lg shadow-md p-6">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">💰 Finance Overview</h2>
+                            <div className="space-y-3">
+                                <div className="bg-blue-50 p-3 rounded-md">
+                                    <p className="text-sm text-blue-800"><strong>Estimated Funding Total:</strong> <span className="text-gray-500">Will show actual amount</span></p>
+                                </div>
+                                <div className="bg-green-50 p-3 rounded-md">
+                                    <p className="text-sm text-green-800"><strong>Last Funding Round:</strong> <span className="text-gray-500">Will show round details</span></p>
+                                </div>
+                                <div className="bg-purple-50 p-3 rounded-md">
+                                    <p className="text-sm text-purple-800"><strong>Annual Revenue Range:</strong> <span className="text-gray-500">Will show revenue estimate</span></p>
+                                </div>
+                                <div className="bg-yellow-50 p-3 rounded-md">
+                                    <p className="text-sm text-yellow-800"><strong>Ad Spend Level:</strong> <span className="text-gray-500">Low/Medium/High</span></p>
+                                </div>
+                                <div className="bg-indigo-50 p-3 rounded-md">
+                                    <p className="text-sm text-indigo-800"><strong>Creative Budget:</strong> <span className="text-gray-500">Will show budget band</span></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Key People */}
+                        <div className="bg-white rounded-lg shadow-md p-6">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">👥 Key People</h2>
+                            <div className="space-y-3">
+                                <div className="bg-blue-50 p-3 rounded-md">
+                                    <p className="text-sm text-blue-800"><strong>Primary Decision Maker:</strong> <span className="text-gray-500">Will show name and role</span></p>
+                                </div>
+                                <div className="bg-green-50 p-3 rounded-md">
+                                    <p className="text-sm text-green-800"><strong>LinkedIn Profile:</strong> <span className="text-gray-500">Will show profile link</span></p>
+                                </div>
+                                <div className="bg-purple-50 p-3 rounded-md">
+                                    <p className="text-sm text-purple-800"><strong>Email:</strong> <span className="text-gray-500">Will show if found</span></p>
+                                </div>
+                                <div className="bg-yellow-50 p-3 rounded-md">
+                                    <p className="text-sm text-yellow-800"><strong>Phone:</strong> <span className="text-gray-500">Will show if public</span></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Business Signals */}
+                        <div className="bg-white rounded-lg shadow-md p-6">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">📡 Business Signals</h2>
+                            <div className="space-y-3">
+                                <div className="bg-blue-50 p-3 rounded-md">
+                                    <p className="text-sm text-blue-800"><strong>Current Agency:</strong> <span className="text-gray-500">Will show if any</span></p>
+                                </div>
+                                <div className="bg-green-50 p-3 rounded-md">
+                                    <p className="text-sm text-green-800"><strong>Hiring for Growth:</strong> <span className="text-gray-500">Yes/No with details</span></p>
+                                </div>
+                                <div className="bg-purple-50 p-3 rounded-md">
+                                    <p className="text-sm text-purple-800"><strong>Key Open Roles:</strong> <span className="text-gray-500">Will show job positions</span></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Lead Scoring */}
+                        <div className="bg-white rounded-lg shadow-md p-6">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">🎯 Lead Scoring</h2>
+                            <div className="space-y-3">
+                                <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-lg border border-red-200">
+                                    <p className="text-sm text-red-800"><strong>Lead Score:</strong> <span className="text-gray-500">0-100 (will calculate)</span></p>
+                                </div>
+                                <div className="bg-gradient-to-r from-yellow-50 to-green-50 p-4 rounded-lg border border-yellow-200">
+                                    <p className="text-sm text-yellow-800"><strong>Tier:</strong> <span className="text-gray-500">Cold/Warm/Hot/Red-hot</span></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Company Info */}
+                        <div className="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">🏢 Company Information</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-3">
+                                    <div className="bg-gray-50 p-3 rounded-md">
+                                        <p className="text-sm text-gray-800"><strong>Company Name:</strong> <span className="text-gray-500">Will show from form</span></p>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-md">
+                                        <p className="text-sm text-gray-800"><strong>Website:</strong> <span className="text-gray-500">Will show URL</span></p>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-md">
+                                        <p className="text-sm text-gray-800"><strong>Industry:</strong> <span className="text-gray-500">Will show from form</span></p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="bg-gray-50 p-3 rounded-md">
+                                        <p className="text-sm text-gray-800"><strong>Location:</strong> <span className="text-gray-500">Will show from form</span></p>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-md">
+                                        <p className="text-sm text-gray-800"><strong>Social Media:</strong> <span className="text-gray-500">Will show handles</span></p>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-md">
+                                        <p className="text-sm text-gray-800"><strong>Notes:</strong> <span className="text-gray-500">Will show your observations</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg shadow-md p-6 lg:col-span-2">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">🚀 Next Steps</h2>
+                            <div className="text-center space-y-4">
+                                <p className="text-gray-700">Once you fill out the company form, you'll get:</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white p-4 rounded-lg border border-blue-200">
+                                        <h3 className="font-semibold text-blue-800 mb-2">📊 Live Data</h3>
+                                        <p className="text-sm text-gray-600">Real-time company information from web search</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-lg border border-green-200">
+                                        <h3 className="font-semibold text-green-800 mb-2">🤖 AI Insights</h3>
+                                        <p className="text-sm text-gray-600">Intelligent analysis and recommendations</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-lg border border-purple-200">
+                                        <h3 className="font-semibold text-purple-800 mb-2">🔍 Full Audit</h3>
+                                        <p className="text-sm text-gray-600">Comprehensive marketing audit report</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={onBackToForm}
+                                    className="bg-blue-600 text-white px-8 py-3 rounded-md hover:bg-blue-700 font-medium text-lg"
+                                >
+                                    🚀 Start Your Company Analysis
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -428,62 +565,6 @@ CRITICAL RULES:
                         </div>
                     </div>
                 </div>
-
-                {/* Raw Search Data Section */}
-                {searchResults && (
-                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                                🔍 Raw Search Data
-                            </h2>
-                            <button
-                                onClick={() => setShowRawData(!showRawData)}
-                                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                            >
-                                {showRawData ? 'Hide Details' : 'Show Details'}
-                            </button>
-                        </div>
-
-                        {showRawData && (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="border rounded-lg p-4">
-                                        <h3 className="font-semibold text-green-600 mb-2">💰 Funding</h3>
-                                        <pre className="text-xs text-gray-700 overflow-auto max-h-32">
-                                            {JSON.stringify(searchResults.funding, null, 2)}
-                                        </pre>
-                                    </div>
-                                    <div className="border rounded-lg p-4">
-                                        <h3 className="font-semibold text-blue-600 mb-2">📰 News</h3>
-                                        <pre className="text-xs text-gray-700 overflow-auto max-h-32">
-                                            {JSON.stringify(searchResults.news, null, 2)}
-                                        </pre>
-                                    </div>
-                                    <div className="border rounded-lg p-4">
-                                        <h3 className="font-semibold text-purple-600 mb-2">💼 Jobs (Marketing Focus)</h3>
-                                        <p className="text-xs text-purple-600 mb-2 italic">Filtered for marketing, content & creative roles</p>
-                                        <pre className="text-xs text-gray-700 overflow-auto max-h-32">
-                                            {JSON.stringify(searchResults.jobs, null, 2)}
-                                        </pre>
-                                    </div>
-                                    <div className="border rounded-lg p-4">
-                                        <h3 className="font-semibold text-orange-600 mb-2">👥 People</h3>
-                                        <pre className="text-xs text-gray-700 overflow-auto max-h-32">
-                                            {JSON.stringify(searchResults.people, null, 2)}
-                                        </pre>
-                                    </div>
-                                </div>
-                                <div className="border rounded-lg p-4">
-                                    <h3 className="font-semibold text-indigo-600 mb-2">🏢 Company Profile</h3>
-                                    <pre className="text-xs text-gray-700 overflow-auto max-h-32">
-                                        {JSON.stringify(searchResults.company, null, 2)}
-                                    </pre>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
                 {/* Action Buttons */}
                 <div className="bg-white rounded-lg shadow-md p-6 text-center">
                     {/* Warning about unsaved data */}
@@ -510,7 +591,7 @@ CRITICAL RULES:
                             onClick={saveToDatabase}
                             className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 font-medium"
                         >
-                            💾 Save to Database
+                            💾 Save and Begin Audit
                         </button>
                     </div>
                 </div>
