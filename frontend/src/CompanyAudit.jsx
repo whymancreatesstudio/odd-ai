@@ -235,48 +235,149 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                 throw new Error('Audit content not found');
             }
 
-            // Convert HTML to canvas
-            const canvas = await html2canvas(auditContent, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: '#ffffff'
-            });
-
-            // Create PDF
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
+            // Create a simplified version for PDF export to avoid CSS compatibility issues
+            const pdfContent = auditContent.cloneNode(true);
             
-            const imgWidth = 210; // A4 width in mm
-            const pageHeight = 295; // A4 height in mm
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-            let heightLeft = imgHeight;
-            let position = 0;
+            // Remove problematic CSS classes and simplify styling
+            const allElements = pdfContent.querySelectorAll('*');
+            allElements.forEach(element => {
+                // Remove Tailwind classes that might cause issues
+                element.className = element.className.replace(/bg-gradient-to-[^ ]*/g, '');
+                element.className = element.className.replace(/from-[^ ]*/g, '');
+                element.className = element.className.replace(/to-[^ ]*/g, '');
+                
+                // Add simple inline styles for PDF compatibility
+                if (element.classList.contains('bg-white')) {
+                    element.style.backgroundColor = '#ffffff';
+                }
+                if (element.classList.contains('bg-slate-50')) {
+                    element.style.backgroundColor = '#f8fafc';
+                }
+                if (element.classList.contains('bg-emerald-50')) {
+                    element.style.backgroundColor = '#ecfdf5';
+                }
+                if (element.classList.contains('bg-blue-50')) {
+                    element.style.backgroundColor = '#eff6ff';
+                }
+                if (element.classList.contains('bg-amber-50')) {
+                    element.style.backgroundColor = '#fffbeb';
+                }
+                if (element.classList.contains('bg-purple-50')) {
+                    element.style.backgroundColor = '#faf5ff';
+                }
+                if (element.classList.contains('bg-indigo-50')) {
+                    element.style.backgroundColor = '#eef2ff';
+                }
+                if (element.classList.contains('bg-rose-50')) {
+                    element.style.backgroundColor = '#fff1f2';
+                }
+                if (element.classList.contains('bg-orange-50')) {
+                    element.style.backgroundColor = '#fff7ed';
+                }
+                
+                // Add border styles
+                if (element.classList.contains('border-slate-200')) {
+                    element.style.borderColor = '#e2e8f0';
+                }
+                if (element.classList.contains('border-amber-200')) {
+                    element.style.borderColor = '#fcd34d';
+                }
+                
+                // Add text colors
+                if (element.classList.contains('text-slate-900')) {
+                    element.style.color = '#0f172a';
+                }
+                if (element.classList.contains('text-slate-700')) {
+                    element.style.color = '#334155';
+                }
+                if (element.classList.contains('text-slate-600')) {
+                    element.style.color = '#475569';
+                }
+                if (element.classList.contains('text-slate-500')) {
+                    element.style.color = '#64748b';
+                }
+                if (element.classList.contains('text-emerald-600')) {
+                    element.style.color = '#059669';
+                }
+                if (element.classList.contains('text-blue-600')) {
+                    element.style.color = '#2563eb';
+                }
+                if (element.classList.contains('text-amber-600')) {
+                    element.style.color = '#d97706';
+                }
+                if (element.classList.contains('text-purple-600')) {
+                    element.style.color = '#9333ea';
+                }
+                if (element.classList.contains('text-indigo-600')) {
+                    element.style.color = '#4f46e5';
+                }
+                if (element.classList.contains('text-rose-600')) {
+                    element.style.color = '#e11d48';
+                }
+            });
+            
+            // Temporarily append to body for html2canvas
+            document.body.appendChild(pdfContent);
+            pdfContent.style.position = 'absolute';
+            pdfContent.style.left = '-9999px';
+            pdfContent.style.top = '0';
+            
+            try {
+                // Convert HTML to canvas
+                const canvas = await html2canvas(pdfContent, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff'
+                });
+                
+                // Clean up
+                document.body.removeChild(pdfContent);
+                
+                // Create PDF
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 210; // A4 width in mm
+                const pageHeight = 295; // A4 height in mm
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
 
-            // Add first page
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-
-            // Add additional pages if content is longer than one page
-            while (heightLeft >= 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
+                // Add first page
                 pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
                 heightLeft -= pageHeight;
+
+                // Add additional pages if content is longer than one page
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                // Generate filename
+                const timestamp = new Date().toISOString().split('T')[0];
+                const filename = `${companyData.companyName.replace(/[^a-zA-Z0-9]/g, '_')}_Audit_${timestamp}.pdf`;
+
+                // Download PDF
+                pdf.save(filename);
+
+                setSnackbar({
+                    open: true,
+                    message: 'PDF exported successfully!',
+                    severity: 'success'
+                });
+                
+            } catch (error) {
+                // Clean up on error
+                if (document.body.contains(pdfContent)) {
+                    document.body.removeChild(pdfContent);
+                }
+                throw error;
             }
+            
 
-            // Generate filename
-            const timestamp = new Date().toISOString().split('T')[0];
-            const filename = `${companyData.companyName.replace(/[^a-zA-Z0-9]/g, '_')}_Audit_${timestamp}.pdf`;
-
-            // Download PDF
-            pdf.save(filename);
-
-            setSnackbar({
-                open: true,
-                message: 'PDF exported successfully!',
-                severity: 'success'
-            });
 
         } catch (error) {
             console.error('PDF export error:', error);
