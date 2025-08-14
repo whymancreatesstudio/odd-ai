@@ -113,7 +113,7 @@ class SupabaseClient {
     // NEW: Save audit to database
     async saveAudit(companyData, crmData, audit, auditStatus) {
         try {
-            console.log('💾 Saving audit to database...');
+            // Saving audit to database
 
             // Save to audits table (you'll need to create this table)
             const { data: auditResult, error: auditError } = await this.supabase
@@ -134,7 +134,7 @@ class SupabaseClient {
                 throw new Error(`Failed to save audit: ${auditError.message}`);
             }
 
-            console.log('✅ Audit saved successfully!');
+            // Audit saved successfully
             return {
                 success: true,
                 message: 'Audit saved successfully',

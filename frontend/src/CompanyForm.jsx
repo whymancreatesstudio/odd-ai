@@ -77,7 +77,32 @@ const CompanyForm = ({ onShowCRM, initialData, onUpdateData }) => {
                 setFormData(initialData);
                 return;
             }
-            
+
+            // If no initial data, this is a new company - clear the form
+            if (!initialData) {
+                console.log('🆕 New company form - clearing previous data');
+                // Clear any previous form data for new company
+                clearSavedFormData();
+                setFormData({
+                    companyName: '',
+                    website: '',
+                    socialMedia: {
+                        linkedin: '',
+                        instagram: '',
+                        youtube: '',
+                        x: '',
+                        facebook: ''
+                    },
+                    customSocials: [],
+                    industry: '',
+                    customIndustry: '',
+                    location: '',
+                    notes: ''
+                });
+                console.log('✅ Form cleared for new company');
+                return;
+            }
+
             // Otherwise, try to load from localStorage
             const saved = localStorage.getItem('oddToolCompanyFormData');
             if (saved) {

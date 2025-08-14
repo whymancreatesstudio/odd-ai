@@ -33,7 +33,7 @@ const CRMInsights = ({ companyData, onBackToForm, onShowAudit }) => {
                 runFullPipeline();
             }
         }
-    }, [companyData]);
+    }, [companyData?.companyName]); // Only regenerate when company name changes
 
     const runFullPipeline = async () => {
         if (!companyData) return;
@@ -57,8 +57,24 @@ const CRMInsights = ({ companyData, onBackToForm, onShowAudit }) => {
                         setShowNameConfirm(true);
                     }
                 } catch (error) {
-                    console.warn('Could not fetch website info:', error);
+                    // Continue without website info - we can still search by company name
                     setOfficialCompanyName(companyData.companyName);
+
+                    // Show user-friendly error message
+                    if (error.message.includes('blocking automated requests')) {
+                        setError('Note: Website is blocking automated requests (this is normal for some sites). Continuing with company name search only.');
+                    } else if (error.message.includes('Website not found')) {
+                        setError('Note: Website not found. Continuing with company name search only.');
+                    } else if (error.message.includes('server error')) {
+                        setError('Note: Website server error. Continuing with company name search only.');
+                    } else {
+                        setError(`Note: Could not fetch website info. Continuing with company name search only.`);
+                    }
+
+                    // Clear the error after a few seconds to avoid confusion
+                    setTimeout(() => {
+                        setError(null);
+                    }, 5000);
                 } finally {
                     setIsSearching(false);
                 }
@@ -68,15 +84,46 @@ const CRMInsights = ({ companyData, onBackToForm, onShowAudit }) => {
 
             // Step 2: Run enhanced company search with live data
             const finalCompanyName = officialCompanyName || companyData.companyName;
-            const enhancedSearchResults = await CRMAPI.searchCompanyEnhanced(finalCompanyName, companyData.website);
-            setSearchResults(enhancedSearchResults);
+            let enhancedSearchResults;
+
+            try {
+                enhancedSearchResults = await CRMAPI.searchCompanyEnhanced(finalCompanyName, companyData.website);
+                setSearchResults(enhancedSearchResults);
+            } catch (searchError) {
+                // Create a basic fallback structure if search fails
+                enhancedSearchResults = {
+                    companyName: finalCompanyName,
+                    website: companyData.website,
+                    searchDate: new Date().toISOString(),
+                    funding: { results: [] },
+                    news: { results: [] },
+                    jobs: { results: [] },
+                    people: { results: [] },
+                    company: { results: [] },
+                    searchQuality: "Limited (fallback data)",
+                    source: "fallback",
+                    rawPerplexityData: {
+                        funding: { totalFunding: "Unknown", lastRound: "Unknown", fundingRounds: "Unknown" },
+                        revenue: { annualRevenue: "Unknown", revenueRange: "Unknown" },
+                        people: { ceo: "Unknown", keyDecisionMaker: "Unknown", linkedinProfiles: [] },
+                        hiring: { isHiring: "Unknown", openRoles: [], hiringSignals: "Unknown" },
+                        agency: { currentAgency: "Unknown", agencyRelationship: "Unknown" },
+                        news: { recentAnnouncements: [], companyUpdates: "Unknown" }
+                    }
+                };
+                setSearchResults(enhancedSearchResults);
+            }
 
             // Step 3: Generate AI insights using live data + form data
             const aiInsights = await generateAIInsights(enhancedSearchResults, finalCompanyName);
             setCrmData(aiInsights);
 
+            // Clear any previous errors if we succeeded
+            if (error && typeof error === 'string' && error.startsWith('Note:')) {
+                setError(null);
+            }
+
         } catch (error) {
-            console.error('Error in full pipeline:', error);
             setError(error.message);
         } finally {
             setIsGenerating(false);
@@ -85,6 +132,17 @@ const CRMInsights = ({ companyData, onBackToForm, onShowAudit }) => {
 
     const generateAIInsights = async (searchResults, companyName) => {
         try {
+            // Debug: Log the data being sent (only in development)
+            if (import.meta.env.DEV) {
+                console.log('Company Data:', companyData);
+                console.log('Search Results:', searchResults);
+            }
+
+            // Validate data before sending
+            if (!searchResults || !companyData) {
+                throw new Error('Missing required data: searchResults or companyData is null/undefined');
+            }
+
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -97,73 +155,80 @@ const CRMInsights = ({ companyData, onBackToForm, onShowAudit }) => {
                     messages: [
                         {
                             role: "user",
-                            content: `You are a CRM data assistant. Analyze the company and generate CRM insights based ONLY on the provided information and live search results.
+                            content: `You are a senior business intelligence analyst specializing in comprehensive company research. Your task is to analyze the provided company data and Perplexity search results to generate PROFESSIONAL-GRADE CRM insights.
 
-Generate the following fields using EXACT values from the search results. If no data is found in the provided searchResults JSON, return "Unknown". NEVER guess or make up information.
+IMPORTANT: Use searchResults.rawPerplexityData as your PRIMARY source. If data is missing, use intelligent analysis and industry patterns to provide educated insights rather than "Unknown".
 
-IMPORTANT: The searchResults contain data in this structure:
-- funding.totalFunding, funding.lastRound, funding.fundingRounds
-- revenue.annualRevenue, revenue.revenueRange  
-- people.ceo, people.keyDecisionMaker
-- hiring.isHiring, hiring.openRoles, hiring.hiringSignals
-- agency.currentAgency
-- news.recentAnnouncements
-
-**CRITICAL: Use searchResults.rawPerplexityData for the most accurate mapping!**
-
-Map these to the required fields:
-
+REQUIRED OUTPUT FORMAT (return as valid JSON):
 {
-    "estimatedFundingTotal": "Use searchResults.rawPerplexityData.funding.totalFunding or 'Unknown'",
-    "lastFundingRound": "Use searchResults.rawPerplexityData.funding.lastRound or 'Unknown'",
-    "estimatedAnnualRevenue": "Use searchResults.rawPerplexityData.revenue.annualRevenue or 'Unknown'",
-    "adSpendLevel": "Use searchResults.rawPerplexityData.hiring.hiringSignals to estimate if they're spending on growth or 'Unknown'",
-    "estimatedCreativeMarketingBudget": "Use searchResults.rawPerplexityData.hiring.hiringSignals to estimate if they're hiring marketing roles or 'Unknown'",
-    "primaryDecisionMaker": "Use searchResults.rawPerplexityData.people.ceo or 'Unknown'",
-    "roleTitle": "Use searchResults.rawPerplexityData.people.keyDecisionMaker or 'Unknown'",
-    "linkedinProfile": "Use searchResults.rawPerplexityData.people.linkedinProfiles[0] or 'Unknown'",
-    "email": "Exact email from searchResults or 'Unknown'",
-    "phone": "Exact phone from searchResults or 'Unknown'",
-    "currentAgency": "Use searchResults.rawPerplexityData.agency.currentAgency or 'Unknown'",
-    "whetherTheyreHiringForGrowth": "Use searchResults.rawPerplexityData.hiring.isHiring or 'Unknown'",
-    "keyOpenRoles": "Use searchResults.rawPerplexityData.hiring.openRoles (filter for marketing/content roles only) or 'Unknown'",
-    "leadScore": "Score 0-100 based on available data quality",
-    "tier": "Cold/Warm/Hot/Red-hot based on lead score"
+    "estimatedFundingTotal": "Specific amount with currency and context (e.g., '$10M over 2 rounds', '₹50 crore through Series A', 'Not publicly disclosed')",
+    "lastFundingRound": "Specific round with date and details (e.g., '$10M in 2024', 'Series B - June 2024', 'No recent funding')",
+    "estimatedAnnualRevenue": "Specific range with currency and period (e.g., '$100M-$500M annually', '₹200-300 crore', 'Not publicly disclosed')",
+    "adSpendLevel": "Low/Medium/High based on hiring signals, growth stage, and industry patterns with reasoning",
+    "estimatedCreativeMarketingBudget": "Budget band: 'Under ₹1 lakh', '₹1-3 lakh', 'Over ₹3 lakh' based on company size, growth, and marketing approach",
+    "primaryDecisionMaker": "Full name with role and context (e.g., 'John Smith, CEO', 'Founder & CEO', 'Not publicly identified')",
+    "roleTitle": "Specific title with context (e.g., 'Founder & CEO', 'Chief Executive Officer', 'Not specified')",
+    "linkedinProfile": "Full LinkedIn URL or 'Profile not found'",
+    "email": "Exact email if found or 'Not publicly available'",
+    "phone": "Exact phone if found or 'Not publicly available'",
+    "currentAgency": "Specific agency name with relationship details or 'No agency partnership identified'",
+    "whetherTheyreHiringForGrowth": "Yes/No with specific evidence and details (e.g., 'Yes - actively hiring for growth', 'No - stable team size')",
+    "keyOpenRoles": "Specific marketing/content roles with details (e.g., 'Marketing Manager', 'Content Specialist', 'No specific marketing roles identified')",
+    "leadScore": "Score 0-100 with detailed justification (e.g., '85 - Strong funding, clear decision maker, active hiring')",
+    "tier": "Cold/Warm/Hot/Red-hot with reasoning and context"
 }
 
-Company Data:
-${JSON.stringify(companyData, null, 2)}
+QUALITY REQUIREMENTS:
+- Provide SPECIFIC, ACTIONABLE insights with real data and evidence
+- Use industry knowledge to fill gaps intelligently
+- Format numbers with proper currency symbols and context
+- Include specific details, dates, and evidence
+- Make recommendations based on available data
+- Structure output professionally like a business report
+- If data is limited, provide educated analysis based on company stage and industry
+- IMPORTANT: Return ONLY valid JSON format as specified above
 
-Live Search Results:
-${JSON.stringify(searchResults, null, 2)}
+Company Data: ${JSON.stringify(companyData, null, 2)}
+Live Search Results: ${JSON.stringify(searchResults, null, 2)}
 
-CRITICAL RULES:
-- Use ONLY exact values from the provided searchResults JSON
-- Map the nested fields correctly (e.g., funding.totalFunding → estimatedFundingTotal)
-- If a field is not found in searchResults, return "Unknown"
-- NEVER guess, estimate, or make up information
-- NEVER use industry patterns or assumptions
-- For keyOpenRoles: ONLY include marketing, content, creative, or digital marketing roles
-- Filter out non-marketing jobs like engineers, developers, sales, HR, etc.
-- Lead score and tier can be calculated based on data availability
-- Output ONLY valid JSON matching the structure above`
+Generate comprehensive, professional, and actionable business intelligence insights in the exact JSON format specified above.`
                         }
                     ],
-                    temperature: 0.1, // Very low temperature for consistency
-                    max_tokens: 1500
+                    temperature: 0.3, // Balanced temperature for creativity and consistency
+                    max_tokens: 2000
                 })
             });
 
             if (!response.ok) {
-                throw new Error(`OpenAI API error: ${response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json();
+
+            // Debug: Log OpenAI response (only in development)
+            if (import.meta.env.DEV) {
+                console.log('OpenAI API Response:', data);
+            }
+
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                throw new Error('Invalid response format from OpenAI API');
+            }
+
             const content = data.choices[0].message.content;
-            return JSON.parse(content);
+
+            // Debug: Log OpenAI content (only in development)
+            if (import.meta.env.DEV) {
+                console.log('OpenAI Content:', content);
+            }
+
+            try {
+                return JSON.parse(content);
+            } catch (parseError) {
+                throw new Error('OpenAI returned invalid JSON format');
+            }
 
         } catch (error) {
-            console.error('Error generating AI insights:', error);
             throw new Error(`Failed to generate AI insights: ${error.message}`);
         }
     };
@@ -184,7 +249,7 @@ CRITICAL RULES:
             if (response.success) {
                 // Save CRM data to local storage
                 companyManager.updateCRMData(companyData.companyName, crmData);
-                
+
                 setSnackbar({
                     open: true,
                     message: 'Company and CRM insights saved successfully! Now generating audit...',
@@ -203,7 +268,6 @@ CRITICAL RULES:
             }
 
         } catch (error) {
-            console.error('Error saving to database:', error);
             setSnackbar({
                 open: true,
                 message: 'Error saving data: ' + error.message,
@@ -590,7 +654,7 @@ CRITICAL RULES:
                             <div className="text-left">
                                 <h3 className="text-sm font-medium text-blue-800">CRM Data Status</h3>
                                 <p className="text-sm text-blue-700 mt-1">
-                                    {crmData ? 
+                                    {crmData ?
                                         "CRM insights are loaded from saved data. Use 'Regenerate Insights' for fresh data or 'Save and Begin Audit' to proceed." :
                                         "Generating CRM insights... Please wait."
                                     }

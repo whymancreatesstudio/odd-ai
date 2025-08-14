@@ -25,7 +25,7 @@ const CompanyAudit = ({ companyData, crmData, onBackToCRM, onUpdateData, auditId
                 generateAudit();
             }
         }
-    }, [companyData, crmData]);
+    }, [companyData?.companyName, crmData]); // Only regenerate when company name changes
 
     const generateAudit = async () => {
         setIsGenerating(true);
@@ -222,12 +222,12 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
             if (response.success) {
                 // Save audit data to local storage
                 companyManager.updateAuditData(companyData.companyName, audit);
-                
+
                 // If we have an update callback, call it
                 if (onUpdateData) {
                     onUpdateData(audit);
                 }
-                
+
                 setSnackbar({ open: true, message: '💾 Audit saved successfully!', severity: 'success' });
                 // Update audit status
                 setAuditStatus('Approved');
@@ -255,7 +255,7 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
 
             // Create a simplified version for PDF export to avoid CSS compatibility issues
             const pdfContent = auditContent.cloneNode(true);
-            
+
             // Remove problematic CSS classes and simplify styling
             const allElements = pdfContent.querySelectorAll('*');
             allElements.forEach(element => {
@@ -263,7 +263,7 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                 element.className = element.className.replace(/bg-gradient-to-[^ ]*/g, '');
                 element.className = element.className.replace(/from-[^ ]*/g, '');
                 element.className = element.className.replace(/to-[^ ]*/g, '');
-                
+
                 // Add simple inline styles for PDF compatibility
                 if (element.classList.contains('bg-white')) {
                     element.style.backgroundColor = '#ffffff';
@@ -292,7 +292,7 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                 if (element.classList.contains('bg-orange-50')) {
                     element.style.backgroundColor = '#fff7ed';
                 }
-                
+
                 // Add border styles
                 if (element.classList.contains('border-slate-200')) {
                     element.style.borderColor = '#e2e8f0';
@@ -300,7 +300,7 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                 if (element.classList.contains('border-amber-200')) {
                     element.style.borderColor = '#fcd34d';
                 }
-                
+
                 // Add text colors
                 if (element.classList.contains('text-slate-900')) {
                     element.style.color = '#0f172a';
@@ -333,13 +333,13 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                     element.style.color = '#e11d48';
                 }
             });
-            
+
             // Temporarily append to body for html2canvas
             document.body.appendChild(pdfContent);
             pdfContent.style.position = 'absolute';
             pdfContent.style.left = '-9999px';
             pdfContent.style.top = '0';
-            
+
             try {
                 // Convert HTML to canvas
                 const canvas = await html2canvas(pdfContent, {
@@ -348,14 +348,14 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                     allowTaint: true,
                     backgroundColor: '#ffffff'
                 });
-                
+
                 // Clean up
                 document.body.removeChild(pdfContent);
-                
+
                 // Create PDF
                 const imgData = canvas.toDataURL('image/png');
                 const pdf = new jsPDF('p', 'mm', 'a4');
-                
+
                 const imgWidth = 210; // A4 width in mm
                 const pageHeight = 295; // A4 height in mm
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -386,7 +386,7 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                     message: 'PDF exported successfully!',
                     severity: 'success'
                 });
-                
+
             } catch (error) {
                 // Clean up on error
                 if (document.body.contains(pdfContent)) {
@@ -394,7 +394,7 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                 }
                 throw error;
             }
-            
+
 
 
         } catch (error) {
@@ -542,15 +542,15 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                                 Save
                             </button>
 
-                                                            <button
-                                    onClick={exportPDF}
-                                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
-                                >
-                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    📄 Export PDF
-                                </button>
+                            <button
+                                onClick={exportPDF}
+                                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+                            >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                📄 Export PDF
+                            </button>
                         </div>
                     </div>
                 </div>

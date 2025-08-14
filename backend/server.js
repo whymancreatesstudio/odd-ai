@@ -17,33 +17,25 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', message: 'CRM Search API is running' });
 });
 
-// Google Search endpoint
+// Perplexity API endpoint (replacing Google Search)
 app.post('/api/search', async (req, res) => {
     try {
-        const { query, companyName, searchType } = req.body;
+        const { query, companyName, searchType, website } = req.body;
 
         if (!companyName) {
             return res.status(400).json({ error: 'Company name is required' });
         }
 
-        let results;
-        if (searchType === 'funding') {
-            results = await googleSearch.searchFunding(companyName);
-        } else if (searchType === 'news') {
-            results = await googleSearch.searchNews(companyName);
-        } else if (searchType === 'jobs') {
-            results = await googleSearch.searchJobs(companyName);
-        } else if (searchType === 'people') {
-            results = await googleSearch.searchPeople(companyName);
-        } else if (searchType === 'company') {
-            results = await googleSearch.searchCompany(companyName);
-        } else {
-            results = await googleSearch.search(query || 'company information', companyName);
-        }
-
-        res.json(results);
+        // Use Perplexity API for all search types
+        const results = await googleSearch.searchWithPerplexity(companyName, website);
+        res.json({
+            success: true,
+            data: results,
+            source: 'perplexity',
+            searchType: searchType || 'comprehensive'
+        });
     } catch (error) {
-        console.error('Search error:', error);
+        console.error('Perplexity search error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -68,7 +60,17 @@ app.post('/api/fetch-website-info', async (req, res) => {
         res.json(websiteInfo);
     } catch (error) {
         console.error('Website info fetch error:', error);
-        res.status(500).json({ error: error.message });
+
+        // Return appropriate status codes based on error type
+        if (error.message.includes('blocking automated requests')) {
+            res.status(403).json({ error: error.message });
+        } else if (error.message.includes('Website not found')) {
+            res.status(404).json({ error: error.message });
+        } else if (error.message.includes('Website server error')) {
+            res.status(502).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: error.message });
+        }
     }
 });
 
@@ -99,26 +101,22 @@ app.post('/api/search/company', async (req, res) => {
             return res.status(400).json({ error: 'Company name is required' });
         }
 
-        // Perform multiple searches in parallel
-        const [funding, news, jobs, people, company] = await Promise.all([
-            googleSearch.searchFunding(companyName),
-            googleSearch.searchNews(companyName),
-            googleSearch.searchJobs(companyName),
-            googleSearch.searchPeople(companyName),
-            googleSearch.searchCompany(companyName)
-        ]);
+        // Use Perplexity API for comprehensive search
+        const comprehensiveResults = await googleSearch.searchWithPerplexity(companyName);
 
-        const comprehensiveResults = {
+        // Transform to match expected format
+        const transformedResults = {
             companyName,
-            funding,
-            news,
-            jobs,
-            people,
-            company,
-            searchDate: new Date().toISOString()
+            funding: { results: comprehensiveResults.funding ? [{ title: "Funding", snippet: comprehensiveResults.funding }] : [] },
+            news: { results: comprehensiveResults.news ? [{ title: "News", snippet: comprehensiveResults.news }] : [] },
+            jobs: { results: comprehensiveResults.hiring ? [{ title: "Jobs", snippet: comprehensiveResults.hiring }] : [] },
+            people: { results: comprehensiveResults.people ? [{ title: "People", snippet: comprehensiveResults.people }] : [] },
+            company: { results: comprehensiveResults.company ? [{ title: "Company", snippet: comprehensiveResults.company }] : [] },
+            searchDate: new Date().toISOString(),
+            source: 'perplexity'
         };
 
-        res.json(comprehensiveResults);
+        res.json(transformedResults);
     } catch (error) {
         console.error('Comprehensive search error:', error);
         res.status(500).json({ error: error.message });
@@ -266,10 +264,10 @@ app.post('/api/save-audit', async (req, res) => {
 const PORT = process.env.PORT || 5001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 app.listen(PORT, () => {
-    console.log(`🚀 CRM Search API server running on port ${PORT}`);
+    // CRM Search API server running on port ${PORT}
     if (NODE_ENV === 'development') {
-        console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+        // Health check: http://localhost:${PORT}/api/health
     } else {
-        console.log(`📊 Production server running on port ${PORT}`);
+        // Production server running on port ${PORT}
     }
 }); 

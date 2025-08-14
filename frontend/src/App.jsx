@@ -54,8 +54,10 @@ function App() {
   const showCRM = (data) => {
     trackUserInteraction('navigate_to_crm');
     setCompanyData(data);
+    setSelectedCompany(data.companyName);
+    setCurrentPage('company');
     setCompanySection('crm');
-    
+
     // Save company data
     companyManager.saveCompany(data.companyName, data);
   };
@@ -78,6 +80,18 @@ function App() {
     setCompanyData(null);
     setCrmData(null);
     setAuditData(null);
+  };
+
+  const startNewCompany = () => {
+    trackUserInteraction('start_new_company');
+    console.log('🚀 Starting new company - clearing all data');
+    setCurrentPage('form');
+    setSelectedCompany(null);
+    setCompanySection('form');
+    setCompanyData(null);
+    setCrmData(null);
+    setAuditData(null);
+    console.log('✅ New company workspace ready');
   };
 
   const selectCompany = (companyName) => {
@@ -165,8 +179,8 @@ function App() {
 
   return (
     <>
-      <Sidebar 
-        onShowForm={showDashboard} 
+      <Sidebar
+        onShowForm={showDashboard}
         currentPage={currentPage}
         companySection={companySection}
         onSelectCompany={selectCompany}
@@ -199,7 +213,7 @@ function App() {
         }>
           {currentPage === 'dashboard' ? (
             <div onLoad={measureComponentLoad('MainDashboard')}>
-              <MainDashboard onAddCompany={() => setCurrentPage('form')} />
+              <MainDashboard onAddCompany={startNewCompany} />
             </div>
           ) : currentPage === 'form' ? (
             <div onLoad={measureComponentLoad('CompanyForm')}>
@@ -209,7 +223,7 @@ function App() {
             // Company-specific pages
             companySection === 'form' ? (
               <div onLoad={measureComponentLoad('CompanyForm')}>
-                <CompanyForm 
+                <CompanyForm
                   onShowCRM={() => navigateToCompanySection('crm')}
                   initialData={companyData}
                   onUpdateData={updateCompanyData}
@@ -217,8 +231,8 @@ function App() {
               </div>
             ) : companySection === 'crm' ? (
               <div onLoad={measureComponentLoad('CRMInsights')}>
-                <CRMInsights 
-                  companyData={companyData} 
+                <CRMInsights
+                  companyData={companyData}
                   onBackToForm={backToForm}
                   onShowAudit={showAudit}
                   onUpdateData={updateCRMData}
@@ -240,7 +254,7 @@ function App() {
 
       {/* Mobile Sidebar Overlay */}
       {isMobileSidebarOpen && (
-        <div 
+        <div
           className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={closeMobileSidebar}
         />

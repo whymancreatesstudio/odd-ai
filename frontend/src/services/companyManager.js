@@ -94,10 +94,12 @@ class CompanyManager {
 
     // Get companies sorted by last updated
     getCompaniesSorted() {
-        return this.getAllCompanies().sort((a, b) => 
+        return this.getAllCompanies().sort((a, b) =>
             new Date(b.updatedAt) - new Date(a.updatedAt)
         );
     }
+
+
 
     // Export all data (for backup)
     exportData() {

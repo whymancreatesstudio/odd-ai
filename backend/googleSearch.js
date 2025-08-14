@@ -6,11 +6,11 @@ class GoogleSearch {
         this.apiKey = process.env.GOOGLE_API_KEY;
         this.searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
         this.perplexityApiKey = process.env.PERPLEXITY_API_KEY;
-        
+
         if (!this.perplexityApiKey) {
             throw new Error('PERPLEXITY_API_KEY environment variable is required');
         }
-        
+
         this.baseUrl = 'https://www.googleapis.com/customsearch/v1';
     }
 
@@ -31,7 +31,7 @@ class GoogleSearch {
             // Security: Sanitize inputs
             const sanitizedQuery = this.sanitizeInput(query);
             const sanitizedCompanyName = this.sanitizeInput(companyName);
-            
+
             let enhancedQuery = sanitizedQuery;
             if (website && this.isValidWebsite(website)) {
                 const domain = this.extractDomain(website);
@@ -58,7 +58,7 @@ class GoogleSearch {
     isValidWebsite(website) {
         try {
             if (!website || typeof website !== 'string') return false;
-            
+
             // Check for common malicious patterns
             const maliciousPatterns = [
                 /javascript:/i,
@@ -68,11 +68,11 @@ class GoogleSearch {
                 /ftp:/i,
                 /mailto:/i
             ];
-            
+
             if (maliciousPatterns.some(pattern => pattern.test(website))) {
                 return false;
             }
-            
+
             // Validate URL structure
             const url = new URL(website.startsWith('http') ? website : `https://${website}`);
             return url.protocol === 'https:' || url.protocol === 'http:';
@@ -84,7 +84,7 @@ class GoogleSearch {
     // Security: Sanitize input strings
     sanitizeInput(input) {
         if (!input || typeof input !== 'string') return '';
-        
+
         return input
             .replace(/[<>]/g, '') // Remove potential HTML tags
             .replace(/javascript:/gi, '') // Remove JavaScript protocol
@@ -139,18 +139,18 @@ class GoogleSearch {
         return this.search('company profile about overview business model', companyName, website);
     }
 
-        // Website Meta Tag Fetcher
+    // Website Meta Tag Fetcher
     async fetchWebsiteMetaTags(website) {
         try {
             // Security: Validate and sanitize website URL
             if (!this.isValidWebsite(website)) {
                 throw new Error('Invalid website URL provided');
             }
-            
-            console.log(`🌐 Fetching website meta tags for: ${website}`);
-            
+
+            // Fetching website meta tags
+
             const response = await axios.get(website, {
-                timeout: 10000,
+                timeout: 8000, // Reduced timeout for faster failure
                 maxRedirects: 3, // Prevent redirect loops
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (compatible; CRM-Bot/1.0)'
@@ -163,7 +163,7 @@ class GoogleSearch {
             const title = this.extractTitle(html);
             const description = this.extractDescription(metaTags);
 
-            console.log(`✅ Website meta tags extracted for: ${website}`);
+            // Website meta tags extracted successfully
             return {
                 companyName,
                 title,
@@ -171,8 +171,26 @@ class GoogleSearch {
                 metaTags
             };
         } catch (error) {
-            console.error(`❌ Failed to fetch website meta tags for ${website}:`, error.message);
-            throw new Error(`Failed to fetch website meta tags: ${error.message}`);
+            if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                throw new Error('Website is taking too long to respond. Please try again or check if the website is accessible.');
+            } else if (error.response) {
+                // Server responded with error status
+                if (error.response.status === 403) {
+                    throw new Error('Website is blocking automated requests. This is common for some websites.');
+                } else if (error.response.status === 404) {
+                    throw new Error('Website not found. Please check the URL.');
+                } else if (error.response.status >= 500) {
+                    throw new Error('Website server error. Please try again later.');
+                } else {
+                    throw new Error(`Website returned error: ${error.response.status} ${error.response.statusText}`);
+                }
+            } else if (error.request) {
+                // Request was made but no response received
+                throw new Error('Unable to reach the website. Please check the URL and try again.');
+            } else {
+                // Other errors
+                throw new Error(`Failed to fetch website: ${error.message}`);
+            }
         }
     }
 
@@ -226,29 +244,28 @@ class GoogleSearch {
         return desc ? this.decodeHtmlEntities(desc) : null;
     }
 
-        // Enhanced comprehensive company search
+    // Enhanced comprehensive company search
     async searchCompanyEnhanced(companyName, website = null) {
         try {
             // Security: Validate inputs before processing
             if (!this.sanitizeInput(companyName)) {
                 throw new Error('Invalid company name provided');
             }
-            
+
             if (website && !this.isValidWebsite(website)) {
                 throw new Error('Invalid website URL provided');
             }
-            
-            console.log(`🔍 Starting enhanced company search for: ${companyName} (${website})`);
-            
+
+            // Starting enhanced company search
+
             // Use Perplexity API instead of Google Custom Search (which has quota issues)
             const perplexityResults = await this.searchWithPerplexity(companyName, website);
-            
-            // Debug: Log the actual response structure
-            console.log('🔍 Perplexity API Response Structure:', JSON.stringify(perplexityResults, null, 2));
-            
+
+            // Perplexity API response received
+
             // Smart Fallback: Run targeted searches for "Unknown" values
             const enhancedResults = await this.runTargetedFallbackSearches(perplexityResults, companyName, website);
-            
+
             // Transform enhanced results to match expected format
             const searchResults = {
                 companyName,
@@ -290,7 +307,7 @@ class GoogleSearch {
                 rawPerplexityData: enhancedResults
             };
 
-            console.log(`✅ Enhanced company search completed for: ${companyName} using Perplexity API + Smart Fallbacks`);
+            // Enhanced company search completed
             return searchResults;
         } catch (error) {
             console.error(`❌ Enhanced company search failed for: ${companyName}`, error);
@@ -318,80 +335,46 @@ class GoogleSearch {
     // Smart Fallback: Run targeted searches for "Unknown" values
     async runTargetedFallbackSearches(perplexityResults, companyName, website) {
         try {
-            console.log(`🔄 Running smart fallback searches for: ${companyName}`);
+            // Running smart fallback searches
 
             const enhancedResults = { ...perplexityResults };
-            const fallbackPromises = [];
 
-            // 1. Funding Fallback: If lastRound is Unknown, search for recent funding news
+            // 1. Funding Fallback: Use Perplexity API for missing funding data
             if (perplexityResults.funding?.lastRound === 'Unknown') {
-                fallbackPromises.push(
-                    this.searchFundingFallback(companyName, website)
-                        .then(result => {
-                            if (result && result !== 'Unknown') {
-                                enhancedResults.funding.lastRound = result;
-                                console.log(`✅ Found funding fallback: ${result}`);
-                            }
-                        })
-                        .catch(err => console.log(`⚠️ Funding fallback failed: ${err.message}`))
-                );
+                // Perplexity API: Funding fallback needed
+                // Will be handled by aggressive Perplexity fallback
             }
 
-            // 2. Revenue Fallback: If revenue is Unknown, search for financial data
+            // 2. Revenue Fallback: Use Perplexity API for missing revenue data
             if (perplexityResults.revenue?.annualRevenue === 'Unknown') {
-                fallbackPromises.push(
-                    this.searchRevenueFallback(companyName, website)
-                        .then(result => {
-                            if (result && result !== 'Unknown') {
-                                enhancedResults.revenue.annualRevenue = result;
-                                console.log(`✅ Found revenue fallback: ${result}`);
-                            }
-                        })
-                        .catch(err => console.log(`⚠️ Revenue fallback failed: ${err.message}`))
-                );
+                // Perplexity API: Revenue fallback needed
+                // Will be handled by aggressive Perplexity fallback
             }
 
-            // 3. News Fallback: If no recent announcements, search for company news
+            // 3. News Fallback: Use Perplexity API for missing news data
             if (!perplexityResults.news?.recentAnnouncements?.length) {
-                fallbackPromises.push(
-                    this.searchNewsFallback(companyName, website)
-                        .then(result => {
-                            if (result && result.length > 0) {
-                                enhancedResults.news.recentAnnouncements = result;
-                                console.log(`✅ Found news fallback: ${result.length} items`);
-                            }
-                        })
-                        .catch(err => console.log(`⚠️ News fallback failed: ${err.message}`))
-                );
+                // Perplexity API: News fallback needed
+                // Will be handled by aggressive Perplexity fallback
             }
 
-            // 4. Hiring Fallback: If hiring info is Unknown, search for job postings
+            // 4. Hiring Fallback: Use Perplexity API for missing hiring data
             if (perplexityResults.hiring?.isHiring === 'Unknown') {
-                fallbackPromises.push(
-                    this.searchHiringFallback(companyName, website)
-                        .then(result => {
-                            if (result && result !== 'Unknown') {
-                                enhancedResults.hiring.isHiring = result;
-                                console.log(`✅ Found hiring fallback: ${result}`);
-                            }
-                        })
-                        .catch(err => console.log(`⚠️ Hiring fallback failed: ${err.message}`))
-                );
+                // Perplexity API: Hiring fallback needed
+                // Will be handled by aggressive Perplexity fallback
             }
 
             // 5. AGGRESSIVE FALLBACK: Use Perplexity again with more specific prompts for missing data
             const missingFields = this.identifyMissingFields(enhancedResults);
             if (missingFields.length > 0) {
-                console.log(`🔄 Running aggressive Perplexity fallback for: ${missingFields.join(', ')}`);
+                // Perplexity API: Aggressive fallback
                 // Run aggressive fallbacks in parallel for better performance
                 const aggressiveResults = await this.runAggressivePerplexityFallback(enhancedResults, companyName, website, missingFields);
                 Object.assign(enhancedResults, aggressiveResults);
             }
 
-            // Wait for all fallback searches to complete
-            await Promise.allSettled(fallbackPromises);
 
-            console.log(`✅ Smart fallback searches completed for: ${companyName}`);
+
+            // Smart fallback searches completed
             return enhancedResults;
 
         } catch (error) {
@@ -415,7 +398,7 @@ class GoogleSearch {
     // Aggressive Perplexity fallback with specific prompts
     async runAggressivePerplexityFallback(currentResults, companyName, website, missingFields) {
         try {
-            console.log(`🚀 Running aggressive Perplexity fallback for: ${companyName}`);
+            // Running aggressive Perplexity fallback
 
             const enhancedResults = {};
 
@@ -429,10 +412,10 @@ class GoogleSearch {
                     const revenueResponse = await this.searchWithPerplexitySpecific(revenuePrompt);
                     if (revenueResponse && revenueResponse !== 'Unknown') {
                         enhancedResults.revenue = { ...currentResults.revenue, annualRevenue: revenueResponse };
-                        console.log(`✅ Found revenue: ${revenueResponse}`);
+                        // Found revenue data
                     }
                 } catch (err) {
-                    console.log(`⚠️ Revenue fallback failed: ${err.message}`);
+                    console.error(`Revenue fallback failed: ${err.message}`);
                 }
             }
 
@@ -446,10 +429,10 @@ class GoogleSearch {
                     const hiringResponse = await this.searchWithPerplexitySpecific(hiringPrompt);
                     if (hiringResponse && hiringResponse !== 'Unknown') {
                         enhancedResults.hiring = { ...currentResults.hiring, isHiring: hiringResponse };
-                        console.log(`✅ Found hiring status: ${hiringResponse}`);
+                        // Found hiring status
                     }
                 } catch (err) {
-                    console.log(`⚠️ Hiring fallback failed: ${err.message}`);
+                    console.error(`Hiring fallback failed: ${err.message}`);
                 }
             }
 
@@ -463,10 +446,10 @@ class GoogleSearch {
                     const agencyResponse = await this.searchWithPerplexitySpecific(agencyPrompt);
                     if (agencyResponse && agencyResponse !== 'Unknown') {
                         enhancedResults.agency = { ...currentResults.agency, currentAgency: agencyResponse };
-                        console.log(`✅ Found agency: ${agencyResponse}`);
+                        // Found agency data
                     }
                 } catch (err) {
-                    console.log(`⚠️ Agency fallback failed: ${err.message}`);
+                    console.error(`Agency fallback failed: ${err.message}`);
                 }
             }
 
@@ -482,7 +465,7 @@ class GoogleSearch {
         try {
             // Rate limiting: Add delay between API calls
             await this.rateLimitDelay();
-            
+
             const response = await axios.post('https://api.perplexity.ai/chat/completions', {
                 model: 'sonar',
                 messages: [{
@@ -598,15 +581,15 @@ class GoogleSearch {
             // Security: Validate inputs before API call
             const sanitizedCompanyName = this.sanitizeInput(companyName);
             const sanitizedWebsite = website ? this.sanitizeInput(website) : null;
-            
+
             if (!sanitizedCompanyName) {
                 throw new Error('Invalid company name provided');
             }
-            
+
             if (sanitizedWebsite && !this.isValidWebsite(sanitizedWebsite)) {
                 throw new Error('Invalid website URL provided');
             }
-            
+
             const query = `Analyze company: ${sanitizedCompanyName} ${sanitizedWebsite ? `website: ${sanitizedWebsite}` : ''}. 
             
             CRITICAL: Return ONLY valid JSON with ALL keys present. NO explanations, NO extra text.

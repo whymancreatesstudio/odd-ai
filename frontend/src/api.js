@@ -139,12 +139,20 @@ class CRMAPI {
             });
 
             if (!response.ok) {
-                throw new Error(`Website info fetch failed: ${response.statusText}`);
+                // Handle specific status codes with user-friendly messages
+                if (response.status === 403) {
+                    throw new Error('Website is blocking automated requests. This is common for some websites. Continuing with company name search only.');
+                } else if (response.status === 404) {
+                    throw new Error('Website not found. Please check the URL and try again.');
+                } else if (response.status >= 500) {
+                    throw new Error('Website server error. Please try again later.');
+                } else {
+                    throw new Error(`Website info fetch failed: ${response.statusText}`);
+                }
             }
 
             return await response.json();
         } catch (error) {
-            console.error('Website info API error:', error);
             throw error;
         }
     }
@@ -166,7 +174,6 @@ class CRMAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('Enhanced company search API error:', error);
             throw error;
         }
     }
@@ -194,7 +201,6 @@ class CRMAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('Save final results API error:', error);
             throw error;
         }
     }
@@ -221,7 +227,6 @@ class CRMAPI {
 
             return await response.json();
         } catch (error) {
-            console.error('Save audit API error:', error);
             throw error;
         }
     }
