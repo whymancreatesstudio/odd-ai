@@ -4,7 +4,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import companyManager from './services/companyManager';
 
-const CompanyAudit = ({ companyData, crmData, onBackToCRM, auditId = null }) => {
+const CompanyAudit = ({ companyData, crmData, onBackToCRM, onUpdateData, auditId = null }) => {
     const [audit, setAudit] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isEnhancing, setIsEnhancing] = useState(false);
@@ -213,6 +213,11 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
             if (response.success) {
                 // Save audit data to local storage
                 companyManager.updateAuditData(companyData.companyName, audit);
+                
+                // If we have an update callback, call it
+                if (onUpdateData) {
+                    onUpdateData(audit);
+                }
                 
                 setSnackbar({ open: true, message: '💾 Audit saved successfully!', severity: 'success' });
                 // Update audit status

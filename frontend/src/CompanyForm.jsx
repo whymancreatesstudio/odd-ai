@@ -5,7 +5,7 @@ import companyManager from './services/companyManager';
 // import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, DialogContentText } from '@mui/material';
 // import { Warning, CheckCircle, Info } from '@mui/icons-material';
 
-const CompanyForm = ({ onShowCRM }) => {
+const CompanyForm = ({ onShowCRM, initialData, onUpdateData }) => {
     const [formData, setFormData] = useState({
         companyName: '',
         website: '',
@@ -69,9 +69,16 @@ const CompanyForm = ({ onShowCRM }) => {
         }
     };
 
-    // Load saved form data from localStorage
+    // Load saved form data from localStorage or initial data
     const loadSavedFormData = () => {
         try {
+            // If we have initial data (editing existing company), use that
+            if (initialData) {
+                setFormData(initialData);
+                return;
+            }
+            
+            // Otherwise, try to load from localStorage
             const saved = localStorage.getItem('oddToolCompanyFormData');
             if (saved) {
                 const parsed = JSON.parse(saved);
@@ -316,6 +323,11 @@ const CompanyForm = ({ onShowCRM }) => {
 
             // Save company data to company manager
             companyManager.saveCompany(companyData.companyName, companyData);
+
+            // If we're updating existing data, call the update callback
+            if (onUpdateData) {
+                onUpdateData(companyData);
+            }
 
             // Navigate to CRM Insights
             onShowCRM(companyData);

@@ -11,9 +11,11 @@ const CompanyAudit = lazy(() => import('./CompanyAudit'))
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [companySection, setCompanySection] = useState('form'); // 'form', 'crm', 'audit'
   const [companyData, setCompanyData] = useState(null);
   const [crmData, setCrmData] = useState(null);
-  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [auditData, setAuditData] = useState(null);
 
   // Check URL parameters for audit page
   useEffect(() => {
@@ -34,10 +36,22 @@ function App() {
     }
   }, []);
 
+  // Load company data when selected company changes
+  useEffect(() => {
+    if (selectedCompany) {
+      const company = companyManager.getCompany(selectedCompany);
+      if (company) {
+        setCompanyData(company.companyData);
+        setCrmData(company.crmData);
+        setAuditData(company.auditData);
+      }
+    }
+  }, [selectedCompany]);
+
   const showCRM = (data) => {
     trackUserInteraction('navigate_to_crm');
     setCompanyData(data);
-    setCurrentPage('crm');
+    setCompanySection('crm');
     
     // Save company data
     companyManager.saveCompany(data.companyName, data);
@@ -45,43 +59,70 @@ function App() {
 
   const backToForm = () => {
     trackUserInteraction('navigate_to_form');
-    setCurrentPage('form');
-    setCompanyData(null);
+    setCompanySection('form');
   };
 
   const backToCRM = () => {
     trackUserInteraction('navigate_to_crm');
-    setCurrentPage('crm');
+    setCompanySection('crm');
+  };
+
+  const showDashboard = () => {
+    trackUserInteraction('navigate_to_dashboard');
+    setCurrentPage('dashboard');
+    setSelectedCompany(null);
+    setCompanySection('form');
+    setCompanyData(null);
+    setCrmData(null);
+    setAuditData(null);
+  };
+
+  const selectCompany = (companyName) => {
+    if (companyName) {
+      setSelectedCompany(companyName);
+      setCurrentPage('company');
+      setCompanySection('form');
+    } else {
+      setSelectedCompany(null);
+      setCompanyData(null);
+      setCrmData(null);
+      setAuditData(null);
+    }
+  };
+
+  const navigateToCompanySection = (section) => {
+    trackUserInteraction(`navigate_to_${section}`);
+    setCompanySection(section);
   };
 
   const showAudit = (companyData, crmData) => {
     trackUserInteraction('navigate_to_audit');
     setCompanyData(companyData);
     setCrmData(crmData);
-    setCurrentPage('audit');
+    setCompanySection('audit');
   };
 
-  const showDashboard = () => {
-    trackUserInteraction('navigate_to_dashboard');
-    setCurrentPage('dashboard');
-    setCompanyData(null);
-    setCrmData(null);
-    setSelectedCompany(null);
+  // Update company data when it changes
+  const updateCompanyData = (newData) => {
+    setCompanyData(newData);
+    if (selectedCompany) {
+      companyManager.saveCompany(selectedCompany, newData);
+    }
   };
 
-  const selectCompany = (companyName) => {
-    if (companyName) {
-      const company = companyManager.getCompany(companyName);
-      if (company) {
-        setCompanyData(company.companyData);
-        setCrmData(company.crmData);
-        setSelectedCompany(companyName);
-        setCurrentPage('form');
-      }
-    } else {
-      setSelectedCompany(null);
-      setCompanyData(null);
-      setCrmData(null);
+  // Update CRM data when it changes
+  const updateCRMData = (newData) => {
+    setCrmData(newData);
+    if (selectedCompany) {
+      companyManager.updateCRMData(selectedCompany, newData);
+    }
+  };
+
+  // Update audit data when it changes
+  const updateAuditData = (newData) => {
+    setAuditData(newData);
+    if (selectedCompany) {
+      companyManager.updateAuditData(selectedCompany, newData);
     }
   };
 
@@ -89,9 +130,11 @@ function App() {
     <>
       <Sidebar 
         onShowForm={showDashboard} 
-        currentPage={currentPage} 
+        currentPage={currentPage}
+        companySection={companySection}
         onSelectCompany={selectCompany}
         selectedCompany={selectedCompany}
+        onNavigateToSection={navigateToCompanySection}
         onShowAudit={showAudit}
       />
       <div className="ml-48">
@@ -112,18 +155,35 @@ function App() {
             <div onLoad={measureComponentLoad('CompanyForm')}>
               <CompanyForm onShowCRM={showCRM} />
             </div>
-          ) : currentPage === 'crm' ? (
-            <div onLoad={measureComponentLoad('CRMInsights')}>
-              <CRMInsights companyData={companyData} onBackToForm={backToForm} onShowAudit={showAudit} />
-            </div>
-          ) : currentPage === 'audit' && companyData && crmData ? (
-            <div onLoad={measureComponentLoad('CompanyAudit')}>
-              <CompanyAudit
-                companyData={companyData}
-                crmData={crmData}
-                onBackToCRM={backToCRM}
-              />
-            </div>
+          ) : currentPage === 'company' && selectedCompany ? (
+            // Company-specific pages
+            companySection === 'form' ? (
+              <div onLoad={measureComponentLoad('CompanyForm')}>
+                <CompanyForm 
+                  onShowCRM={() => navigateToCompanySection('crm')}
+                  initialData={companyData}
+                  onUpdateData={updateCompanyData}
+                />
+              </div>
+            ) : companySection === 'crm' ? (
+              <div onLoad={measureComponentLoad('CRMInsights')}>
+                <CRMInsights 
+                  companyData={companyData} 
+                  onBackToForm={backToForm}
+                  onShowAudit={showAudit}
+                  onUpdateData={updateCRMData}
+                />
+              </div>
+            ) : companySection === 'audit' ? (
+              <div onLoad={measureComponentLoad('CompanyAudit')}>
+                <CompanyAudit
+                  companyData={companyData}
+                  crmData={crmData}
+                  onBackToCRM={backToCRM}
+                  onUpdateData={updateAuditData}
+                />
+              </div>
+            ) : null
           ) : null}
         </Suspense>
       </div>
