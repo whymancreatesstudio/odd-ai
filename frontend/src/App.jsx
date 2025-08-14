@@ -1,6 +1,8 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react'
 import Sidebar from './Sidebar'
+import MainDashboard from './components/MainDashboard'
 import { measureComponentLoad, trackUserInteraction } from './utils/performance'
+import companyManager from './services/companyManager'
 
 // Lazy load components for better performance
 const CompanyForm = lazy(() => import('./CompanyForm'))
@@ -8,9 +10,10 @@ const CRMInsights = lazy(() => import('./CRMInsights'))
 const CompanyAudit = lazy(() => import('./CompanyAudit'))
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('form');
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const [companyData, setCompanyData] = useState(null);
   const [crmData, setCrmData] = useState(null);
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   // Check URL parameters for audit page
   useEffect(() => {
@@ -35,6 +38,9 @@ function App() {
     trackUserInteraction('navigate_to_crm');
     setCompanyData(data);
     setCurrentPage('crm');
+    
+    // Save company data
+    companyManager.saveCompany(data.companyName, data);
   };
 
   const backToForm = () => {
@@ -48,9 +54,38 @@ function App() {
     setCurrentPage('crm');
   };
 
+  const showDashboard = () => {
+    trackUserInteraction('navigate_to_dashboard');
+    setCurrentPage('dashboard');
+    setCompanyData(null);
+    setCrmData(null);
+    setSelectedCompany(null);
+  };
+
+  const selectCompany = (companyName) => {
+    if (companyName) {
+      const company = companyManager.getCompany(companyName);
+      if (company) {
+        setCompanyData(company.companyData);
+        setCrmData(company.crmData);
+        setSelectedCompany(companyName);
+        setCurrentPage('form');
+      }
+    } else {
+      setSelectedCompany(null);
+      setCompanyData(null);
+      setCrmData(null);
+    }
+  };
+
   return (
     <>
-      <Sidebar onShowForm={backToForm} currentPage={currentPage} />
+      <Sidebar 
+        onShowForm={showDashboard} 
+        currentPage={currentPage} 
+        onSelectCompany={selectCompany}
+        selectedCompany={selectedCompany}
+      />
       <div className="ml-48">
         <Suspense fallback={
           <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -61,7 +96,11 @@ function App() {
             </div>
           </div>
         }>
-          {currentPage === 'form' ? (
+          {currentPage === 'dashboard' ? (
+            <div onLoad={measureComponentLoad('MainDashboard')}>
+              <MainDashboard onAddCompany={() => setCurrentPage('form')} />
+            </div>
+          ) : currentPage === 'form' ? (
             <div onLoad={measureComponentLoad('CompanyForm')}>
               <CompanyForm onShowCRM={showCRM} />
             </div>
@@ -72,8 +111,7 @@ function App() {
           ) : currentPage === 'audit' && companyData && crmData ? (
             <div onLoad={measureComponentLoad('CompanyAudit')}>
               <CompanyAudit
-                companyData={companyData}
-                crmData={crmData}
+                companyData={crmData}
                 onBackToCRM={backToCRM}
               />
             </div>

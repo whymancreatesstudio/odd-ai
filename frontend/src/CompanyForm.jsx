@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CRMAPI from './api';
+import companyManager from './services/companyManager';
 // Temporarily disabled MUI imports for testing
 // import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, DialogContentText } from '@mui/material';
 // import { Warning, CheckCircle, Info } from '@mui/icons-material';
@@ -312,6 +313,9 @@ const CompanyForm = ({ onShowCRM }) => {
 
             // Save form data to localStorage before navigating
             saveFormData(formData);
+
+            // Save company data to company manager
+            companyManager.saveCompany(companyData.companyName, companyData);
 
             // Navigate to CRM Insights
             onShowCRM(companyData);

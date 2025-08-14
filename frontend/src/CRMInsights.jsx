@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import CRMAPI from './api';
+import companyManager from './services/companyManager';
 // Temporarily disabled MUI imports for testing
 // import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, DialogContentText } from '@mui/material';
 // import { Warning, CheckCircle, Info } from '@mui/icons-material';
@@ -171,6 +172,9 @@ CRITICAL RULES:
             );
 
             if (response.success) {
+                // Save CRM data to local storage
+                companyManager.updateCRMData(companyData.companyName, crmData);
+                
                 setSnackbar({
                     open: true,
                     message: 'Company and CRM insights saved successfully! Now generating audit...',
