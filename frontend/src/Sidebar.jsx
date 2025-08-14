@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import companyManager from './services/companyManager';
 
-const Sidebar = ({ onShowForm, currentPage, onSelectCompany, selectedCompany }) => {
+const Sidebar = ({ onShowForm, currentPage, onSelectCompany, selectedCompany, onShowAudit }) => {
     return (
         <div className="fixed left-0 top-0 h-full w-48 bg-gray-900 text-white shadow-lg">
             <div className="p-6">
@@ -123,19 +123,19 @@ const Sidebar = ({ onShowForm, currentPage, onSelectCompany, selectedCompany }) 
 
         return (
             <div className="relative">
-                <button
-                    onClick={onSelect}
-                    className={`w-full py-2 px-3 rounded-md text-left transition-colors duration-200 text-sm ${
+                <div
+                    className={`w-full py-2 px-3 rounded-md text-left transition-colors duration-200 text-sm cursor-pointer ${
                         isSelected 
                             ? 'bg-blue-600 text-white' 
                             : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
                     }`}
+                    onClick={onSelect}
                 >
                     <div className="flex items-center justify-between">
                         <span className="font-medium truncate">{company.companyName}</span>
                         <button
                             onClick={handleDeleteClick}
-                            className="text-red-400 hover:text-red-300 ml-2"
+                            className="text-red-400 hover:text-red-300 ml-2 p-1 rounded hover:bg-red-900/20"
                             title="Delete company"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +156,7 @@ const Sidebar = ({ onShowForm, currentPage, onSelectCompany, selectedCompany }) 
                             <span className="w-2 h-2 bg-purple-500 rounded-full" title="Audit available"></span>
                         )}
                     </div>
-                </button>
+                </div>
 
                 {/* Delete Confirmation */}
                 {showDeleteConfirm && (

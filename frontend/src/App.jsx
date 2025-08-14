@@ -54,6 +54,13 @@ function App() {
     setCurrentPage('crm');
   };
 
+  const showAudit = (companyData, crmData) => {
+    trackUserInteraction('navigate_to_audit');
+    setCompanyData(companyData);
+    setCrmData(crmData);
+    setCurrentPage('audit');
+  };
+
   const showDashboard = () => {
     trackUserInteraction('navigate_to_dashboard');
     setCurrentPage('dashboard');
@@ -85,6 +92,7 @@ function App() {
         currentPage={currentPage} 
         onSelectCompany={selectCompany}
         selectedCompany={selectedCompany}
+        onShowAudit={showAudit}
       />
       <div className="ml-48">
         <Suspense fallback={
@@ -106,12 +114,13 @@ function App() {
             </div>
           ) : currentPage === 'crm' ? (
             <div onLoad={measureComponentLoad('CRMInsights')}>
-              <CRMInsights companyData={companyData} onBackToForm={backToForm} />
+              <CRMInsights companyData={companyData} onBackToForm={backToForm} onShowAudit={showAudit} />
             </div>
           ) : currentPage === 'audit' && companyData && crmData ? (
             <div onLoad={measureComponentLoad('CompanyAudit')}>
               <CompanyAudit
-                companyData={crmData}
+                companyData={companyData}
+                crmData={crmData}
                 onBackToCRM={backToCRM}
               />
             </div>

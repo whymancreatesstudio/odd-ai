@@ -6,7 +6,7 @@ import companyManager from './services/companyManager';
 // import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, DialogContentText } from '@mui/material';
 // import { Warning, CheckCircle, Info } from '@mui/icons-material';
 
-const CRMInsights = ({ companyData, onBackToForm }) => {
+const CRMInsights = ({ companyData, onBackToForm, onShowAudit }) => {
     const [crmData, setCrmData] = useState(null);
     const [searchResults, setSearchResults] = useState(null);
     const [officialCompanyName, setOfficialCompanyName] = useState(null);
@@ -183,8 +183,10 @@ CRITICAL RULES:
 
                 // Navigate to audit page after saving
                 setTimeout(() => {
-                    // Navigate to audit page with company data
-                    window.location.href = `/audit?company=${encodeURIComponent(JSON.stringify(companyData))}&crm=${encodeURIComponent(JSON.stringify(crmData))}`;
+                    // Navigate to audit page using callback
+                    if (onShowAudit) {
+                        onShowAudit(companyData, crmData);
+                    }
                 }, 2000);
             } else {
                 throw new Error(response.message || 'Failed to save data');

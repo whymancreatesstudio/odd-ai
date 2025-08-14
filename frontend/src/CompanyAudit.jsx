@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CRMAPI from './api';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import companyManager from './services/companyManager';
 
 const CompanyAudit = ({ companyData, crmData, onBackToCRM, auditId = null }) => {
     const [audit, setAudit] = useState(null);
@@ -210,6 +211,9 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
             const response = await CRMAPI.saveAudit(companyData, crmData, audit, auditStatus);
 
             if (response.success) {
+                // Save audit data to local storage
+                companyManager.updateAuditData(companyData.companyName, audit);
+                
                 setSnackbar({ open: true, message: '💾 Audit saved successfully!', severity: 'success' });
                 // Update audit status
                 setAuditStatus('Approved');
