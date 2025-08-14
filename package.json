@@ -1,4 +1,14 @@
 {
+  "name": "oddtool",
+  "version": "1.0.0",
+  "description": "AI-Powered CRM Tool with Company Audits",
+  "scripts": {
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:netlify": "bash scripts/netlify-build.sh",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "start:backend": "cd backend && npm start"
+  },
   "dependencies": {
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1"
