@@ -21,7 +21,17 @@ const CRMInsights = ({ companyData, onBackToForm, onShowAudit }) => {
 
     useEffect(() => {
         if (companyData) {
-            runFullPipeline();
+            // Check if we already have CRM data for this company
+            const existingCompany = companyManager.getCompany(companyData.companyName);
+            if (existingCompany && existingCompany.crmData) {
+                // Load existing CRM data
+                setCrmData(existingCompany.crmData);
+                setSearchResults(existingCompany.searchResults || null);
+                setOfficialCompanyName(existingCompany.officialCompanyName || companyData.companyName);
+            } else {
+                // No existing data, run the pipeline
+                runFullPipeline();
+            }
         }
     }, [companyData]);
 
@@ -573,14 +583,17 @@ CRITICAL RULES:
                 </div>
                 {/* Action Buttons */}
                 <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                    {/* Warning about unsaved data */}
-                    <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                    {/* Data status and actions */}
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
                         <div className="flex items-center">
-                            <div className="text-yellow-600 text-xl mr-3">⚠️</div>
+                            <div className="text-blue-600 text-xl mr-3">ℹ️</div>
                             <div className="text-left">
-                                <h3 className="text-sm font-medium text-yellow-800">CRM Details Not Saved</h3>
-                                <p className="text-sm text-yellow-700 mt-1">
-                                    Your CRM insights are currently in preview mode. Click "Save to Database" to permanently store this data in Supabase.
+                                <h3 className="text-sm font-medium text-blue-800">CRM Data Status</h3>
+                                <p className="text-sm text-blue-700 mt-1">
+                                    {crmData ? 
+                                        "CRM insights are loaded from saved data. Use 'Regenerate Insights' for fresh data or 'Save and Begin Audit' to proceed." :
+                                        "Generating CRM insights... Please wait."
+                                    }
                                 </p>
                             </div>
                         </div>
