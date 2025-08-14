@@ -264,7 +264,12 @@ app.post('/api/save-audit', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 app.listen(PORT, () => {
     console.log(`🚀 CRM Search API server running on port ${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    if (NODE_ENV === 'development') {
+        console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    } else {
+        console.log(`📊 Production server running on port ${PORT}`);
+    }
 }); 

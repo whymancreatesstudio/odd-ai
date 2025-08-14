@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react'
-import CompanyForm from './CompanyForm'
-import CRMInsights from './CRMInsights'
-import CompanyAudit from './CompanyAudit'
+import React, { useState, useEffect, Suspense, lazy } from 'react'
 import Sidebar from './Sidebar'
+import { measureComponentLoad, trackUserInteraction } from './utils/performance'
+
+// Lazy load components for better performance
+const CompanyForm = lazy(() => import('./CompanyForm'))
+const CRMInsights = lazy(() => import('./CRMInsights'))
+const CompanyAudit = lazy(() => import('./CompanyAudit'))
 
 function App() {
   const [currentPage, setCurrentPage] = useState('form');
@@ -29,16 +32,19 @@ function App() {
   }, []);
 
   const showCRM = (data) => {
+    trackUserInteraction('navigate_to_crm');
     setCompanyData(data);
     setCurrentPage('crm');
   };
 
   const backToForm = () => {
+    trackUserInteraction('navigate_to_form');
     setCurrentPage('form');
     setCompanyData(null);
   };
 
   const backToCRM = () => {
+    trackUserInteraction('navigate_to_crm');
     setCurrentPage('crm');
   };
 
@@ -46,17 +52,33 @@ function App() {
     <>
       <Sidebar onShowForm={backToForm} currentPage={currentPage} />
       <div className="ml-48">
-        {currentPage === 'form' ? (
-          <CompanyForm onShowCRM={showCRM} />
-        ) : currentPage === 'crm' ? (
-          <CRMInsights companyData={companyData} onBackToForm={backToForm} />
-        ) : currentPage === 'audit' && companyData && crmData ? (
-          <CompanyAudit
-            companyData={companyData}
-            crmData={crmData}
-            onBackToCRM={backToCRM}
-          />
-        ) : null}
+        <Suspense fallback={
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Loading...</h2>
+              <p className="text-slate-600">Please wait while we load the component</p>
+            </div>
+          </div>
+        }>
+          {currentPage === 'form' ? (
+            <div onLoad={measureComponentLoad('CompanyForm')}>
+              <CompanyForm onShowCRM={showCRM} />
+            </div>
+          ) : currentPage === 'crm' ? (
+            <div onLoad={measureComponentLoad('CRMInsights')}>
+              <CRMInsights companyData={companyData} onBackToForm={backToForm} />
+            </div>
+          ) : currentPage === 'audit' && companyData && crmData ? (
+            <div onLoad={measureComponentLoad('CompanyAudit')}>
+              <CompanyAudit
+                companyData={companyData}
+                crmData={crmData}
+                onBackToCRM={backToCRM}
+              />
+            </div>
+          ) : null}
+        </Suspense>
       </div>
     </>
   )

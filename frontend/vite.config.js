@@ -10,4 +10,26 @@ export default defineConfig({
       plugins: [tailwindcss],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Manual chunk splitting for better performance
+        manualChunks: {
+          // Vendor chunks - third-party libraries
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-ui': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-pdf': ['jspdf', 'html2canvas'],
+        },
+      },
+    },
+    // Enable source maps for debugging
+    sourcemap: false,
+    // Tree shaking for unused code
+    minify: true,
+  },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: ['react', 'react-dom', '@supabase/supabase-js'],
+  },
 })

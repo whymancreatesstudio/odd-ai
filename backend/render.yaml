@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: oddtool-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Add your other environment variables here
+      # - key: SUPABASE_URL
+      #   value: your_supabase_url
+      # - key: SUPABASE_ANON_KEY
+      #   value: your_supabase_anon_key
+      # - key: OPENAI_API_KEY
+      #   value: your_openai_key
+      # - key: PERPLEXITY_API_KEY
+      #   value: your_perplexity_key
+      # - key: GOOGLE_SEARCH_API_KEY
+      #   value: your_google_key
+      # - key: GOOGLE_SEARCH_ENGINE_ID
+      #   value: your_engine_id 
