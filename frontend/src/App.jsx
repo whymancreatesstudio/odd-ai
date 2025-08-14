@@ -161,7 +161,7 @@ function App() {
         companySection={companySection}
         onSelectCompany={selectCompany}
         selectedCompany={selectedCompany}
-        onNavigateToSection={navigateToSection}
+        onNavigateToSection={navigateToCompanySection}
         onShowAudit={showAudit}
         onShowDeleteModal={showDeleteModal}
       />
