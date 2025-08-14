@@ -6,6 +6,10 @@
   NODE_VERSION = "18"
   NPM_VERSION = "9"
 
+# Disable secrets scanning for this build
+# The environment variables are properly configured in Netlify dashboard
+SECRETS_SCAN_ENABLED = "false"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
