@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import companyManager from './services/companyManager';
 
-const Sidebar = ({ onShowForm, currentPage, companySection, onSelectCompany, selectedCompany, onNavigateToSection, onShowAudit }) => {
+const Sidebar = ({ onShowForm, currentPage, companySection, onSelectCompany, selectedCompany, onNavigateToSection, onShowAudit, onShowDeleteModal }) => {
     return (
         <div className="fixed left-0 top-0 h-full w-48 bg-gray-900 text-white shadow-lg">
             <div className="p-6">
@@ -34,7 +34,7 @@ const Sidebar = ({ onShowForm, currentPage, companySection, onSelectCompany, sel
                                 company={company}
                                 isSelected={selectedCompany === company.companyName}
                                 onSelect={() => onSelectCompany(company.companyName)}
-                                onDelete={() => handleDeleteCompany(company.companyName)}
+                                onDelete={() => onShowDeleteModal(company.companyName)}
                             />
                         ))}
                     </div>
@@ -120,24 +120,6 @@ const Sidebar = ({ onShowForm, currentPage, companySection, onSelectCompany, sel
 
     // Company Navigation Item Component
     function CompanyNavItem({ company, isSelected, onSelect, onDelete }) {
-        const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-        const handleDeleteClick = (e) => {
-            e.stopPropagation();
-            setShowDeleteConfirm(true);
-        };
-
-        const confirmDelete = (e) => {
-            e.stopPropagation();
-            onDelete();
-            setShowDeleteConfirm(false);
-        };
-
-        const cancelDelete = (e) => {
-            e.stopPropagation();
-            setShowDeleteConfirm(false);
-        };
-
         return (
             <div className="relative">
                 <div
@@ -151,7 +133,7 @@ const Sidebar = ({ onShowForm, currentPage, companySection, onSelectCompany, sel
                     <div className="flex items-center justify-between">
                         <span className="font-medium truncate">{company.companyName}</span>
                         <button
-                            onClick={handleDeleteClick}
+                            onClick={onDelete}
                             className="text-red-400 hover:text-red-300 ml-2 p-1 rounded hover:bg-red-900/20"
                             title="Delete company"
                         >
@@ -174,41 +156,8 @@ const Sidebar = ({ onShowForm, currentPage, companySection, onSelectCompany, sel
                         )}
                     </div>
                 </div>
-
-                {/* Delete Confirmation */}
-                {showDeleteConfirm && (
-                    <div className="absolute left-full ml-2 top-0 bg-red-600 text-white p-3 rounded-md shadow-lg z-50 min-w-48">
-                        <p className="text-sm mb-3">
-                            Are you sure? Once deleted, all data for <strong>{company.companyName}</strong> will be lost and cannot be recovered.
-                        </p>
-                        <div className="flex space-x-2">
-                            <button
-                                onClick={confirmDelete}
-                                className="bg-red-700 hover:bg-red-800 px-3 py-1 rounded text-sm"
-                            >
-                                Delete
-                            </button>
-                            <button
-                                onClick={cancelDelete}
-                                className="bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded text-sm"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
         );
-    }
-
-    // Delete Company Handler
-    function handleDeleteCompany(companyName) {
-        if (companyManager.deleteCompany(companyName)) {
-            // If this was the selected company, clear selection
-            if (selectedCompany === companyName) {
-                onSelectCompany(null);
-            }
-        }
     }
 };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react'
 import Sidebar from './Sidebar'
 import MainDashboard from './components/MainDashboard'
+import DeleteConfirmationModal from './components/DeleteConfirmationModal'
 import { measureComponentLoad, trackUserInteraction } from './utils/performance'
 import companyManager from './services/companyManager'
 
@@ -16,6 +17,7 @@ function App() {
   const [companyData, setCompanyData] = useState(null);
   const [crmData, setCrmData] = useState(null);
   const [auditData, setAuditData] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, companyName: null });
 
   // Check URL parameters for audit page
   useEffect(() => {
@@ -126,6 +128,31 @@ function App() {
     }
   };
 
+  // Delete modal functions
+  const showDeleteModal = (companyName) => {
+    setDeleteModal({ isOpen: true, companyName });
+  };
+
+  const hideDeleteModal = () => {
+    setDeleteModal({ isOpen: false, companyName: null });
+  };
+
+  const confirmDeleteCompany = () => {
+    const companyName = deleteModal.companyName;
+    if (companyName && companyManager.deleteCompany(companyName)) {
+      // If this was the selected company, clear selection
+      if (selectedCompany === companyName) {
+        setSelectedCompany(null);
+        setCurrentPage('dashboard');
+        setCompanySection('form');
+        setCompanyData(null);
+        setCrmData(null);
+        setAuditData(null);
+      }
+      hideDeleteModal();
+    }
+  };
+
   return (
     <>
       <Sidebar 
@@ -134,8 +161,9 @@ function App() {
         companySection={companySection}
         onSelectCompany={selectCompany}
         selectedCompany={selectedCompany}
-        onNavigateToSection={navigateToCompanySection}
+        onNavigateToSection={navigateToSection}
         onShowAudit={showAudit}
+        onShowDeleteModal={showDeleteModal}
       />
       <div className="ml-48">
         <Suspense fallback={
@@ -187,6 +215,14 @@ function App() {
           ) : null}
         </Suspense>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        companyName={deleteModal.companyName}
+        onConfirm={confirmDeleteCompany}
+        onCancel={hideDeleteModal}
+      />
     </>
   )
 }
