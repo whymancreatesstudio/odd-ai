@@ -18,6 +18,7 @@ function App() {
   const [crmData, setCrmData] = useState(null);
   const [auditData, setAuditData] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, companyName: null });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Check URL parameters for audit page
   useEffect(() => {
@@ -153,6 +154,15 @@ function App() {
     }
   };
 
+  // Mobile sidebar functions
+  const openMobileSidebar = () => {
+    setIsMobileSidebarOpen(true);
+  };
+
+  const closeMobileSidebar = () => {
+    setIsMobileSidebarOpen(false);
+  };
+
   return (
     <>
       <Sidebar 
@@ -164,8 +174,20 @@ function App() {
         onNavigateToSection={navigateToCompanySection}
         onShowAudit={showAudit}
         onShowDeleteModal={showDeleteModal}
+        isMobileOpen={isMobileSidebarOpen}
+        onMobileClose={closeMobileSidebar}
       />
-      <div className="ml-48">
+      <div className="ml-0 md:ml-48">
+        {/* Mobile Menu Button */}
+        <button
+          onClick={openMobileSidebar}
+          className="md:hidden fixed top-4 left-4 z-40 bg-gray-900 text-white p-2 rounded-md shadow-lg"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
         <Suspense fallback={
           <div className="min-h-screen bg-slate-50 flex items-center justify-center">
             <div className="text-center">
@@ -215,6 +237,14 @@ function App() {
           ) : null}
         </Suspense>
       </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={closeMobileSidebar}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal

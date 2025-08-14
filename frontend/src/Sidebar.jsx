@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import companyManager from './services/companyManager';
 
-const Sidebar = ({ onShowForm, currentPage, companySection, onSelectCompany, selectedCompany, onNavigateToSection, onShowAudit, onShowDeleteModal }) => {
+const Sidebar = ({ onShowForm, currentPage, companySection, onSelectCompany, selectedCompany, onNavigateToSection, onShowAudit, onShowDeleteModal, isMobileOpen, onMobileClose }) => {
     return (
-        <div className="fixed left-0 top-0 h-full w-48 bg-gray-900 text-white shadow-lg">
+        <div className={`fixed left-0 top-0 h-full bg-gray-900 text-white shadow-lg transition-transform duration-300 ease-in-out ${
+            isMobileOpen ? 'w-64 z-50' : 'w-48'
+        } ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
             <div className="p-6">
+                {/* Mobile Close Button */}
+                <button
+                    onClick={onMobileClose}
+                    className="md:hidden absolute top-4 right-4 text-gray-400 hover:text-white"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                
                 <h1 className="text-2xl font-bold text-white mb-8">
                     ODD AI
                 </h1>
