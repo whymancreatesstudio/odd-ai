@@ -17,9 +17,7 @@ export default defineConfig({
         manualChunks: {
           // Vendor chunks - third-party libraries
           'vendor-react': ['react', 'react-dom'],
-          'vendor-ui': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
           'vendor-supabase': ['@supabase/supabase-js'],
-          'vendor-pdf': ['jspdf', 'html2canvas'],
         },
       },
     },
@@ -31,5 +29,17 @@ export default defineConfig({
   // Optimize dependencies
   optimizeDeps: {
     include: ['react', 'react-dom', '@supabase/supabase-js'],
+    exclude: [
+      'react-router-dom',
+      '@mui/material',
+      '@mui/icons-material',
+      '@emotion/react',
+      '@emotion/styled',
+      'framer-motion',
+      'lucide-react',
+      'date-fns',
+      'react-slick',
+      'slick-carousel'
+    ],
   },
 })

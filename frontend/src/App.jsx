@@ -1,274 +1,104 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react'
-import Sidebar from './Sidebar'
-import MainDashboard from './components/MainDashboard'
-import DeleteConfirmationModal from './components/DeleteConfirmationModal'
-import { measureComponentLoad, trackUserInteraction } from './utils/performance'
-import companyManager from './services/companyManager'
+import React, { useState, createContext, useContext, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import MainDashboard from './components/MainDashboard';
+import CompanyForm from './CompanyForm';
+import CRMInsights from './CRMInsights';
+import CompanyAudit from './CompanyAudit';
+import ProfilePage from './pages/ProfilePage';
+import ReportsPage from './pages/ReportsPage';
+import SettingsPage from './pages/SettingsPage';
+import TemplateAudit from './components/TemplateAudit';
+import { lazy, Suspense } from 'react';
 
-// Lazy load components for better performance
-const CompanyForm = lazy(() => import('./CompanyForm'))
-const CRMInsights = lazy(() => import('./CRMInsights'))
-const CompanyAudit = lazy(() => import('./CompanyAudit'))
+// Create theme context
+export const ThemeContext = createContext();
 
-function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const [selectedCompany, setSelectedCompany] = useState(null);
-  const [companySection, setCompanySection] = useState('form'); // 'form', 'crm', 'audit'
-  const [companyData, setCompanyData] = useState(null);
-  const [crmData, setCrmData] = useState(null);
-  const [auditData, setAuditData] = useState(null);
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, companyName: null });
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+// Lazy load components
+const DeleteConfirmationModal = lazy(() => import('./components/DeleteConfirmationModal'));
 
-  // Check URL parameters for audit page
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const companyParam = urlParams.get('company');
-    const crmParam = urlParams.get('crm');
+// App Routes Component
+function AppRoutes() {
+    const navigate = useNavigate();
 
-    if (companyParam && crmParam) {
-      try {
-        const company = JSON.parse(decodeURIComponent(companyParam));
-        const crm = JSON.parse(decodeURIComponent(crmParam));
-        setCompanyData(company);
-        setCrmData(crm);
-        setCurrentPage('audit');
-      } catch (error) {
-        console.error('Error parsing URL parameters:', error);
-      }
-    }
-  }, []);
+    const handleAddCompany = () => {
+        navigate('/company-form');
+    };
 
-  // Load company data when selected company changes
-  useEffect(() => {
-    if (selectedCompany) {
-      const company = companyManager.getCompany(selectedCompany);
-      if (company) {
-        setCompanyData(company.companyData);
-        setCrmData(company.crmData);
-        setAuditData(company.auditData);
-      }
-    }
-  }, [selectedCompany]);
+    const handleBackToDashboard = () => {
+        navigate('/');
+    };
 
-  const showCRM = (data) => {
-    trackUserInteraction('navigate_to_crm');
-    setCompanyData(data);
-    setSelectedCompany(data.companyName);
-    setCurrentPage('company');
-    setCompanySection('crm');
+    const handleViewCRM = (companyData) => {
+        navigate('/crm-insights');
+    };
 
-    // Save company data
-    companyManager.saveCompany(data.companyName, data);
-  };
+    const handleViewAudit = (companyData) => {
+        navigate('/company-audit');
+    };
 
-  const backToForm = () => {
-    trackUserInteraction('navigate_to_form');
-    setCompanySection('form');
-  };
-
-  const backToCRM = () => {
-    trackUserInteraction('navigate_to_crm');
-    setCompanySection('crm');
-  };
-
-  const showDashboard = () => {
-    trackUserInteraction('navigate_to_dashboard');
-    setCurrentPage('dashboard');
-    setSelectedCompany(null);
-    setCompanySection('form');
-    setCompanyData(null);
-    setCrmData(null);
-    setAuditData(null);
-  };
-
-  const startNewCompany = () => {
-    trackUserInteraction('start_new_company');
-    console.log('🚀 Starting new company - clearing all data');
-    setCurrentPage('form');
-    setSelectedCompany(null);
-    setCompanySection('form');
-    setCompanyData(null);
-    setCrmData(null);
-    setAuditData(null);
-    console.log('✅ New company workspace ready');
-  };
-
-  const selectCompany = (companyName) => {
-    if (companyName) {
-      setSelectedCompany(companyName);
-      setCurrentPage('company');
-      setCompanySection('form');
-    } else {
-      setSelectedCompany(null);
-      setCompanyData(null);
-      setCrmData(null);
-      setAuditData(null);
-    }
-  };
-
-  const navigateToCompanySection = (section) => {
-    trackUserInteraction(`navigate_to_${section}`);
-    setCompanySection(section);
-  };
-
-  const showAudit = (companyData, crmData) => {
-    trackUserInteraction('navigate_to_audit');
-    setCompanyData(companyData);
-    setCrmData(crmData);
-    setCompanySection('audit');
-  };
-
-  // Update company data when it changes
-  const updateCompanyData = (newData) => {
-    setCompanyData(newData);
-    if (selectedCompany) {
-      companyManager.saveCompany(selectedCompany, newData);
-    }
-  };
-
-  // Update CRM data when it changes
-  const updateCRMData = (newData) => {
-    setCrmData(newData);
-    if (selectedCompany) {
-      companyManager.updateCRMData(selectedCompany, newData);
-    }
-  };
-
-  // Update audit data when it changes
-  const updateAuditData = (newData) => {
-    setAuditData(newData);
-    if (selectedCompany) {
-      companyManager.updateAuditData(selectedCompany, newData);
-    }
-  };
-
-  // Delete modal functions
-  const showDeleteModal = (companyName) => {
-    setDeleteModal({ isOpen: true, companyName });
-  };
-
-  const hideDeleteModal = () => {
-    setDeleteModal({ isOpen: false, companyName: null });
-  };
-
-  const confirmDeleteCompany = () => {
-    const companyName = deleteModal.companyName;
-    if (companyName && companyManager.deleteCompany(companyName)) {
-      // If this was the selected company, clear selection
-      if (selectedCompany === companyName) {
-        setSelectedCompany(null);
-        setCurrentPage('dashboard');
-        setCompanySection('form');
-        setCompanyData(null);
-        setCrmData(null);
-        setAuditData(null);
-      }
-      hideDeleteModal();
-    }
-  };
-
-  // Mobile sidebar functions
-  const openMobileSidebar = () => {
-    setIsMobileSidebarOpen(true);
-  };
-
-  const closeMobileSidebar = () => {
-    setIsMobileSidebarOpen(false);
-  };
-
-  return (
-    <>
-      <Sidebar
-        onShowForm={showDashboard}
-        currentPage={currentPage}
-        companySection={companySection}
-        onSelectCompany={selectCompany}
-        selectedCompany={selectedCompany}
-        onNavigateToSection={navigateToCompanySection}
-        onShowAudit={showAudit}
-        onShowDeleteModal={showDeleteModal}
-        isMobileOpen={isMobileSidebarOpen}
-        onMobileClose={closeMobileSidebar}
-      />
-      <div className="ml-0 md:ml-48">
-        {/* Mobile Menu Button */}
-        <button
-          onClick={openMobileSidebar}
-          className="md:hidden fixed top-4 left-4 z-40 bg-gray-900 text-white p-2 rounded-md shadow-lg"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-
-        <Suspense fallback={
-          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <h2 className="text-xl font-semibold text-slate-900 mb-2">Loading...</h2>
-              <p className="text-slate-600">Please wait while we load the component</p>
-            </div>
-          </div>
-        }>
-          {currentPage === 'dashboard' ? (
-            <div onLoad={measureComponentLoad('MainDashboard')}>
-              <MainDashboard onAddCompany={startNewCompany} />
-            </div>
-          ) : currentPage === 'form' ? (
-            <div onLoad={measureComponentLoad('CompanyForm')}>
-              <CompanyForm onShowCRM={showCRM} />
-            </div>
-          ) : currentPage === 'company' && selectedCompany ? (
-            // Company-specific pages
-            companySection === 'form' ? (
-              <div onLoad={measureComponentLoad('CompanyForm')}>
-                <CompanyForm
-                  onShowCRM={() => navigateToCompanySection('crm')}
-                  initialData={companyData}
-                  onUpdateData={updateCompanyData}
-                />
-              </div>
-            ) : companySection === 'crm' ? (
-              <div onLoad={measureComponentLoad('CRMInsights')}>
-                <CRMInsights
-                  companyData={companyData}
-                  onBackToForm={backToForm}
-                  onShowAudit={showAudit}
-                  onUpdateData={updateCRMData}
-                />
-              </div>
-            ) : companySection === 'audit' ? (
-              <div onLoad={measureComponentLoad('CompanyAudit')}>
-                <CompanyAudit
-                  companyData={companyData}
-                  crmData={crmData}
-                  onBackToCRM={backToCRM}
-                  onUpdateData={updateAuditData}
-                />
-              </div>
-            ) : null
-          ) : null}
-        </Suspense>
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {isMobileSidebarOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={closeMobileSidebar}
-        />
-      )}
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={deleteModal.isOpen}
-        companyName={deleteModal.companyName}
-        onConfirm={confirmDeleteCompany}
-        onCancel={hideDeleteModal}
-      />
-    </>
-  )
+    return (
+        <Routes>
+            <Route path="/" element={
+                <MainDashboard onAddCompany={handleAddCompany} />
+            } />
+            <Route path="/template-audit" element={
+                <TemplateAudit onBack={handleBackToDashboard} onSelectTemplate={(template) => console.log('Selected template:', template)} />
+            } />
+            <Route path="/company-form" element={
+                <CompanyForm onBack={handleBackToDashboard} onViewCRM={handleViewCRM} />
+            } />
+            <Route path="/crm-insights" element={
+                <CRMInsights onBack={handleBackToDashboard} onViewAudit={handleViewAudit} />
+            } />
+            <Route path="/company-audit" element={
+                <CompanyAudit onBack={handleBackToDashboard} />
+            } />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    );
 }
 
-export default App
+function App() {
+    const [theme, setTheme] = useState(() => {
+        // Get theme from localStorage or default to dark
+        const savedTheme = localStorage.getItem('theme');
+        return savedTheme || 'dark';
+    });
+
+    const toggleTheme = () => {
+        setTheme(prev => {
+            const newTheme = prev === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            return newTheme;
+        });
+    };
+
+    // Apply theme to document
+    useEffect(() => {
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(theme);
+    }, [theme]);
+
+    return (
+        <Router>
+            <ThemeContext.Provider value={{ theme, toggleTheme }}>
+                <div className={`min-h-screen transition-colors duration-300 ${theme === 'dark'
+                    ? 'bg-[#242424] text-white'
+                    : 'bg-gray-50 text-gray-900'
+                    }`}>
+
+                    <AppRoutes />
+
+                    <Suspense fallback={<div>Loading...</div>}>
+                        <DeleteConfirmationModal />
+                    </Suspense>
+                </div>
+            </ThemeContext.Provider>
+        </Router>
+    );
+}
+
+export default App;

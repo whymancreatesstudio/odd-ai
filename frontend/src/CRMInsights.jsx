@@ -19,6 +19,12 @@ const CRMInsights = ({ companyData, onBackToForm, onShowAudit }) => {
     const [nameConfirmData, setNameConfirmData] = useState({ userInput: '', officialName: '' });
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
+    // Enhancement system states
+    const [showEnhanceDropdown, setShowEnhanceDropdown] = useState(false);
+    const [showCustomEnhanceModal, setShowCustomEnhanceModal] = useState(false);
+    const [showAutoEnhanceModal, setShowAutoEnhanceModal] = useState(false);
+    const [enhancementPoints, setEnhancementPoints] = useState('');
+
     useEffect(() => {
         if (companyData) {
             // Check if we already have CRM data for this company
@@ -34,6 +40,18 @@ const CRMInsights = ({ companyData, onBackToForm, onShowAudit }) => {
             }
         }
     }, [companyData?.companyName]); // Only regenerate when company name changes
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showEnhanceDropdown && !event.target.closest('.relative')) {
+                setShowEnhanceDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showEnhanceDropdown]);
 
     const runFullPipeline = async () => {
         if (!companyData) return;
@@ -299,6 +317,126 @@ Generate comprehensive, professional, and actionable business intelligence insig
         }
     };
 
+    // Custom enhancement based on user input
+    const enhanceCustomCRM = async () => {
+        if (!crmData || !enhancementPoints.trim()) return;
+
+        setIsGenerating(true);
+        setError(null);
+        setShowCustomEnhanceModal(false);
+
+        try {
+            const customEnhancePrompt = `You are enhancing existing CRM insights based on specific user requirements.
+
+USER'S ENHANCEMENT REQUEST:
+${enhancementPoints}
+
+Current CRM Data:
+${JSON.stringify(crmData, null, 2)}
+
+Please enhance this CRM data according to the user's specific requirements. Focus on the areas they mentioned and make targeted improvements. Return the enhanced CRM data in the same JSON format.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    response_format: { type: "json_object" },
+                    temperature: 0.3,
+                    max_tokens: 4000,
+                    messages: [
+                        {
+                            role: "user",
+                            content: customEnhancePrompt
+                        }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const enhancedCRM = JSON.parse(data.choices[0].message.content);
+
+            setCrmData(enhancedCRM);
+            setEnhancementPoints('');
+            setSnackbar({ open: true, message: '🎯 Custom CRM enhancement completed!', severity: 'success' });
+
+        } catch (error) {
+            setError(`Failed to enhance CRM: ${error.message}`);
+            setSnackbar({ open: true, message: `❌ Custom enhancement failed: ${error.message}`, severity: 'error' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    // Auto-enhance all CRM sections comprehensively
+    const enhanceAutoCRM = async () => {
+        if (!crmData) return;
+
+        setIsGenerating(true);
+        setError(null);
+        setShowAutoEnhanceModal(false);
+
+        try {
+            const autoEnhancePrompt = `Transform this CRM data into comprehensive, detailed insights by:
+
+1. Expanding each field with detailed analysis and context
+2. Adding specific examples and evidence
+3. Including industry benchmarks and comparisons
+4. Adding actionable recommendations
+5. Creating detailed implementation suggestions
+6. Adding supporting data and metrics
+7. Making it professional and business-ready
+
+Current CRM Data:
+${JSON.stringify(crmData, null, 2)}
+
+Transform this into comprehensive CRM insights while maintaining the existing structure. Return the enhanced CRM data in the same JSON format.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    response_format: { type: "json_object" },
+                    temperature: 0.3,
+                    max_tokens: 4000,
+                    messages: [
+                        {
+                            role: "user",
+                            content: autoEnhancePrompt
+                        }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const enhancedCRM = JSON.parse(data.choices[0].message.content);
+
+            setCrmData(enhancedCRM);
+            setSnackbar({ open: true, message: '🚀 Auto-enhancement completed! CRM insights expanded.', severity: 'success' });
+
+        } catch (error) {
+            setError(`Failed to auto-enhance CRM: ${error.message}`);
+            setSnackbar({ open: true, message: `❌ Auto-enhancement failed: ${error.message}`, severity: 'error' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     // Close snackbar
     const handleCloseSnackbar = () => {
         setSnackbar({ ...snackbar, open: false });
@@ -505,7 +643,7 @@ Generate comprehensive, professional, and actionable business intelligence insig
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-start">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">
                                 {officialCompanyName || companyData.companyName}
@@ -524,12 +662,60 @@ Generate comprehensive, professional, and actionable business intelligence insig
                                 </p>
                             )}
                         </div>
-                        <button
-                            onClick={handleBackToForm}
-                            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
-                        >
-                            ← Back to Form
-                        </button>
+
+                        <div className="flex items-center space-x-3">
+                            {/* Enhance Button - Top Right */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowEnhanceDropdown(!showEnhanceDropdown)}
+                                    disabled={!crmData || isGenerating}
+                                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 rounded-md transition-colors shadow-sm"
+                                >
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    🔧 Enhance
+                                    <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+
+                                {/* Enhancement Dropdown */}
+                                {showEnhanceDropdown && crmData && !isGenerating && (
+                                    <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                                        <div className="py-1">
+                                            <button
+                                                onClick={() => {
+                                                    setShowCustomEnhanceModal(true);
+                                                    setShowEnhanceDropdown(false);
+                                                }}
+                                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                                            >
+                                                📝 Custom Enhancement
+                                                <span className="ml-2 text-xs text-gray-500">User specifies what to enhance</span>
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setShowAutoEnhanceModal(true);
+                                                    setShowEnhanceDropdown(false);
+                                                }}
+                                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                                            >
+                                                🚀 Auto-Enhance All
+                                                <span className="ml-2 text-xs text-gray-500">AI enhances everything</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={handleBackToForm}
+                                className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+                            >
+                                ← Back to Form
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -664,6 +850,7 @@ Generate comprehensive, professional, and actionable business intelligence insig
                     </div>
 
                     <div className="flex justify-center space-x-4">
+
                         <button
                             onClick={runFullPipeline}
                             className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 font-medium"
@@ -738,6 +925,91 @@ Generate comprehensive, professional, and actionable business intelligence insig
                             </button>
                             <button onClick={() => handleNameConfirm(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
                                 Yes, use official name
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Enhancement Modal */}
+            {showCustomEnhanceModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4">
+                        <h3 className="text-lg font-semibold mb-4">📝 Custom CRM Enhancement</h3>
+                        <p className="text-gray-600 mb-4">
+                            What would you like to enhance in your CRM insights? Be specific about the areas you want improved.
+                        </p>
+                        <textarea
+                            value={enhancementPoints}
+                            onChange={(e) => setEnhancementPoints(e.target.value)}
+                            placeholder="Example: Focus more on financial analysis, add competitor pricing, expand marketing strategy section, include implementation timelines..."
+                            className="w-full p-3 border border-gray-300 rounded-md mb-4 h-32 resize-none"
+                        />
+                        <div className="bg-blue-50 p-3 rounded-md mb-4">
+                            <p className="text-sm text-blue-800">
+                                <strong>Examples:</strong>
+                            </p>
+                            <ul className="text-sm text-blue-700 mt-1 list-disc list-inside">
+                                <li>"Add more financial analysis and projections"</li>
+                                <li>"Expand competitor research section"</li>
+                                <li>"Focus on marketing strategy and ROI"</li>
+                                <li>"Include implementation roadmaps"</li>
+                            </ul>
+                        </div>
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={() => setShowCustomEnhanceModal(false)}
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={enhanceCustomCRM}
+                                disabled={!enhancementPoints.trim() || isGenerating}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400"
+                            >
+                                {isGenerating ? 'Enhancing...' : '🎯 Enhance CRM'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Auto-Enhance Modal */}
+            {showAutoEnhanceModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4">
+                        <h3 className="text-lg font-semibold mb-4">🚀 Auto-Enhance CRM</h3>
+                        <p className="text-gray-600 mb-4">
+                            This will automatically enhance your CRM insights to include comprehensive analysis and detailed information.
+                        </p>
+                        <div className="bg-green-50 p-4 rounded-md mb-4">
+                            <p className="text-sm text-green-800 font-medium mb-2">
+                                What will be enhanced:
+                            </p>
+                            <ul className="text-sm text-green-700 space-y-1">
+                                <li>✅ Detailed financial analysis and projections</li>
+                                <li>✅ Expanded competitor research and intelligence</li>
+                                <li>✅ Enhanced marketing insights and strategies</li>
+                                <li>✅ Strategic recommendations with roadmaps</li>
+                                <li>✅ Implementation plans with timelines</li>
+                                <li>✅ Industry benchmarks and data</li>
+                                <li>✅ Professional business insights</li>
+                            </ul>
+                        </div>
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={() => setShowAutoEnhanceModal(false)}
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={enhanceAutoCRM}
+                                disabled={isGenerating}
+                                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+                            >
+                                {isGenerating ? 'Enhancing...' : '🚀 Auto-Enhance CRM'}
                             </button>
                         </div>
                     </div>

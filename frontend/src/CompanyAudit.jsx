@@ -12,6 +12,12 @@ const CompanyAudit = ({ companyData, crmData, onBackToCRM, onUpdateData, auditId
     const [auditStatus, setAuditStatus] = useState('Draft');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
+    // Enhancement system states
+    const [showEnhanceDropdown, setShowEnhanceDropdown] = useState(false);
+    const [showCustomEnhanceModal, setShowCustomEnhanceModal] = useState(false);
+    const [showAutoEnhanceModal, setShowAutoEnhanceModal] = useState(false);
+    const [enhancementPoints, setEnhancementPoints] = useState('');
+
     useEffect(() => {
         if (companyData && crmData) {
             // Check if we already have audit data for this company
@@ -26,6 +32,18 @@ const CompanyAudit = ({ companyData, crmData, onBackToCRM, onUpdateData, auditId
             }
         }
     }, [companyData?.companyName, crmData]); // Only regenerate when company name changes
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showEnhanceDropdown && !event.target.closest('.relative')) {
+                setShowEnhanceDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showEnhanceDropdown]);
 
     const generateAudit = async () => {
         setIsGenerating(true);
@@ -207,6 +225,126 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
             console.error('Error enhancing audit:', error);
             setError(`Failed to enhance audit: ${error.message}`);
             setSnackbar({ open: true, message: `❌ Error: ${error.message}`, severity: 'error' });
+        } finally {
+            setIsEnhancing(false);
+        }
+    };
+
+    // Custom enhancement based on user input
+    const enhanceCustomAudit = async () => {
+        if (!audit || !enhancementPoints.trim()) return;
+
+        setIsEnhancing(true);
+        setError(null);
+        setShowCustomEnhanceModal(false);
+
+        try {
+            const customEnhancePrompt = `You are enhancing an existing audit based on specific user requirements.
+
+USER'S ENHANCEMENT REQUEST:
+${enhancementPoints}
+
+Current Audit:
+${JSON.stringify(audit, null, 2)}
+
+Please enhance this audit according to the user's specific requirements. Focus on the areas they mentioned and make targeted improvements. Return the enhanced audit in the same JSON format.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    response_format: { type: "json_object" },
+                    temperature: 0.3,
+                    max_tokens: 4000,
+                    messages: [
+                        {
+                            role: "user",
+                            content: customEnhancePrompt
+                        }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const enhancedAudit = JSON.parse(data.choices[0].message.content);
+
+            setAudit(enhancedAudit);
+            setEnhancementPoints('');
+            setSnackbar({ open: true, message: '🎯 Custom enhancement completed!', severity: 'success' });
+
+        } catch (error) {
+            setError(`Failed to enhance audit: ${error.message}`);
+            setSnackbar({ open: true, message: `❌ Custom enhancement failed: ${error.message}`, severity: 'error' });
+        } finally {
+            setIsEnhancing(false);
+        }
+    };
+
+    // Auto-enhance all sections comprehensively
+    const enhanceAutoAudit = async () => {
+        if (!audit) return;
+
+        setIsEnhancing(true);
+        setError(null);
+        setShowAutoEnhanceModal(false);
+
+        try {
+            const autoEnhancePrompt = `Transform this audit into a comprehensive 10-15 page executive report by:
+
+1. Expanding each section with detailed analysis and insights
+2. Adding financial projections and metrics where applicable
+3. Including competitive intelligence and market analysis
+4. Adding strategic recommendations with implementation roadmaps
+5. Creating detailed action plans with timelines and resources
+6. Adding supporting data and industry benchmarks
+7. Making it professional and executive-ready
+
+Current Audit:
+${JSON.stringify(audit, null, 2)}
+
+Transform this into a comprehensive executive report while maintaining the existing structure. Return the enhanced audit in the same JSON format.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    response_format: { type: "json_object" },
+                    temperature: 0.3,
+                    max_tokens: 6000,
+                    messages: [
+                        {
+                            role: "user",
+                            content: autoEnhancePrompt
+                        }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const enhancedAudit = JSON.parse(data.choices[0].message.content);
+
+            setAudit(enhancedAudit);
+            setSnackbar({ open: true, message: '🚀 Auto-enhancement completed! Audit expanded to comprehensive report.', severity: 'success' });
+
+        } catch (error) {
+            setError(`Failed to auto-enhance audit: ${error.message}`);
+            setSnackbar({ open: true, message: `❌ Auto-enhancement failed: ${error.message}`, severity: 'error' });
         } finally {
             setIsEnhancing(false);
         }
@@ -465,22 +603,6 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="flex items-center space-x-3">
-                                <div className="text-right">
-                                    <div className="text-xs text-slate-500 uppercase tracking-wide">Status</div>
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${auditStatus === 'Draft' ? 'bg-amber-100 text-amber-800' :
-                                        auditStatus === 'Approved' ? 'bg-emerald-100 text-emerald-800' :
-                                            'bg-blue-100 text-blue-800'
-                                        }`}>
-                                        {auditStatus}
-                                    </span>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-xs text-slate-500 uppercase tracking-wide">Generated</div>
-                                    <div className="text-sm text-slate-900">{new Date(audit.auditMetadata?.generatedDate).toLocaleDateString()}</div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -498,9 +620,10 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                             Back to CRM
                         </button>
 
-                        <div className="flex items-center space-x-3">
+
+                        <div className="relative">
                             <button
-                                onClick={enhanceAudit}
+                                onClick={() => setShowEnhanceDropdown(!showEnhanceDropdown)}
                                 disabled={isEnhancing}
                                 className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 rounded-md transition-colors"
                             >
@@ -517,271 +640,304 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                         </svg>
-                                        Enhance
+                                        🔧 Enhance
+                                        <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
                                     </>
                                 )}
                             </button>
 
-                            <button
-                                onClick={generateAudit}
-                                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Regenerate Audit
-                            </button>
+                            {/* Enhancement Dropdown */}
+                            {showEnhanceDropdown && !isEnhancing && (
+                                <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                                    <div className="py-1">
+                                        <button
+                                            onClick={() => {
+                                                setShowCustomEnhanceModal(true);
+                                                setShowEnhanceDropdown(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                                        >
+                                            📝 Custom Enhancement
+                                            <span className="ml-2 text-xs text-gray-500">User specifies what to enhance</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowAutoEnhanceModal(true);
+                                                setShowEnhanceDropdown(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                                        >
+                                            🚀 Auto-Enhance All
+                                            <span className="ml-2 text-xs text-gray-500">AI enhances everything</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
-                            <button
-                                onClick={saveAudit}
-                                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                                </svg>
-                                Save
-                            </button>
+                        <button
+                            onClick={generateAudit}
+                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Regenerate Audit
+                        </button>
 
-                            <button
-                                onClick={exportPDF}
-                                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                📄 Export PDF
-                            </button>
+                        <button
+                            onClick={saveAudit}
+                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                            Save
+                        </button>
+
+                        <button
+                            onClick={exportPDF}
+                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            📄 Export PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Audit Content */}
+            <div id="audit-content" className="p-6 space-y-6">
+                {/* Executive Summary */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-blue-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Executive Summary</h2>
+                    </div>
+                    <div className="p-6">
+                        <p className="text-slate-700 leading-relaxed">{audit.auditSummary?.executiveSummary}</p>
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="text-center p-4 bg-slate-50 rounded-lg">
+                                <div className="text-2xl font-bold text-slate-900">{audit.auditSummary?.priorityLevel}</div>
+                                <div className="text-xs text-slate-500 uppercase tracking-wide">Priority</div>
+                            </div>
+                            <div className="text-center p-4 bg-slate-50 rounded-lg">
+                                <div className="text-2xl font-bold text-slate-900">{audit.auditSummary?.estimatedValue}</div>
+                                <div className="text-xs text-slate-500 uppercase tracking-wide">Value</div>
+                            </div>
+                            <div className="text-center p-4 bg-slate-50 rounded-lg">
+                                <div className="text-2xl font-bold text-slate-900">0-7 days</div>
+                                <div className="text-xs text-slate-500 uppercase tracking-wide">Quick Wins</div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Audit Content */}
-                <div id="audit-content" className="p-6 space-y-6">
-                    {/* Executive Summary */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-blue-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Executive Summary</h2>
-                        </div>
-                        <div className="p-6">
-                            <p className="text-slate-700 leading-relaxed">{audit.auditSummary?.executiveSummary}</p>
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="text-center p-4 bg-slate-50 rounded-lg">
-                                    <div className="text-2xl font-bold text-slate-900">{audit.auditSummary?.priorityLevel}</div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-wide">Priority</div>
-                                </div>
-                                <div className="text-center p-4 bg-slate-50 rounded-lg">
-                                    <div className="text-2xl font-bold text-slate-900">{audit.auditSummary?.estimatedValue}</div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-wide">Value</div>
-                                </div>
-                                <div className="text-center p-4 bg-slate-50 rounded-lg">
-                                    <div className="text-2xl font-bold text-slate-900">0-7 days</div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-wide">Quick Wins</div>
-                                </div>
+                {/* Company Overview */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-emerald-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Company Overview</h2>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <p className="text-slate-700">{audit.companyOverview?.profile}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-emerald-50 rounded-lg">
+                                <div className="text-xs text-emerald-600 uppercase tracking-wide font-medium">Industry</div>
+                                <div className="text-sm text-slate-900 mt-1">{audit.companyOverview?.industry}</div>
+                            </div>
+                            <div className="p-3 bg-emerald-50 rounded-lg">
+                                <div className="text-xs text-emerald-600 uppercase tracking-wide font-medium">Location</div>
+                                <div className="text-sm text-slate-900 mt-1">{audit.companyOverview?.location}</div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Company Overview */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-emerald-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Company Overview</h2>
+                {/* Financial Overview */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-blue-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Financial Overview</h2>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <p className="text-slate-700">{audit.fundingGrowthStage?.fundingStatus}</p>
+                        <p className="text-slate-700">{audit.fundingGrowthStage?.growthIndicators}</p>
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                            <div className="text-xs text-blue-600 uppercase tracking-wide font-medium">Investment Readiness</div>
+                            <div className="text-sm text-slate-900 mt-1">{audit.fundingGrowthStage?.investmentReadiness}</div>
                         </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-slate-700">{audit.companyOverview?.profile}</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-emerald-50 rounded-lg">
-                                    <div className="text-xs text-emerald-600 uppercase tracking-wide font-medium">Industry</div>
-                                    <div className="text-sm text-slate-900 mt-1">{audit.companyOverview?.industry}</div>
+                    </div>
+                </div>
+
+                {/* Leadership & Team */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-amber-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Leadership & Team</h2>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <p className="text-slate-700">{audit.leadershipTeamStructure?.decisionMakerProfile}</p>
+                        <p className="text-slate-700">{audit.leadershipTeamStructure?.outreachReadiness}</p>
+                        <div className="p-3 bg-amber-50 rounded-lg">
+                            <div className="text-xs text-amber-600 uppercase tracking-wide font-medium">Team Structure</div>
+                            <div className="text-sm text-slate-900 mt-1">{audit.leadershipTeamStructure?.teamStructure}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Marketing & Agency */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-purple-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Marketing & Agency</h2>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <p className="text-slate-700">{audit.marketingAgencyPresence?.currentAgency}</p>
+                        <p className="text-slate-700">{audit.marketingAgencyPresence?.adSpendPatterns}</p>
+                        <div className="p-3 bg-purple-50 rounded-lg">
+                            <div className="text-xs text-purple-600 uppercase tracking-wide font-medium">Marketing Maturity</div>
+                            <div className="text-sm text-slate-900 mt-1">{audit.marketingAgencyPresence?.marketingMaturity}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Strategy Gaps */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-red-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Strategy & Creative Gaps</h2>
+                    </div>
+                    <div className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">CRO Opportunities</h3>
+                                    <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.croOpportunities}</p>
                                 </div>
-                                <div className="p-3 bg-emerald-50 rounded-lg">
-                                    <div className="text-xs text-emerald-600 uppercase tracking-wide font-medium">Location</div>
-                                    <div className="text-sm text-slate-900 mt-1">{audit.companyOverview?.location}</div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Messaging Gaps</h3>
+                                    <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.messagingGaps}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Content Strategy</h3>
+                                    <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.contentCadence}</p>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Financial Overview */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-blue-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Financial Overview</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-slate-700">{audit.fundingGrowthStage?.fundingStatus}</p>
-                            <p className="text-slate-700">{audit.fundingGrowthStage?.growthIndicators}</p>
-                            <div className="p-3 bg-blue-50 rounded-lg">
-                                <div className="text-xs text-blue-600 uppercase tracking-wide font-medium">Investment Readiness</div>
-                                <div className="text-sm text-slate-900 mt-1">{audit.fundingGrowthStage?.investmentReadiness}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Leadership & Team */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-amber-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Leadership & Team</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-slate-700">{audit.leadershipTeamStructure?.decisionMakerProfile}</p>
-                            <p className="text-slate-700">{audit.leadershipTeamStructure?.outreachReadiness}</p>
-                            <div className="p-3 bg-amber-50 rounded-lg">
-                                <div className="text-xs text-amber-600 uppercase tracking-wide font-medium">Team Structure</div>
-                                <div className="text-sm text-slate-900 mt-1">{audit.leadershipTeamStructure?.teamStructure}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Marketing & Agency */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-purple-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Marketing & Agency</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-slate-700">{audit.marketingAgencyPresence?.currentAgency}</p>
-                            <p className="text-slate-700">{audit.marketingAgencyPresence?.adSpendPatterns}</p>
-                            <div className="p-3 bg-purple-50 rounded-lg">
-                                <div className="text-xs text-purple-600 uppercase tracking-wide font-medium">Marketing Maturity</div>
-                                <div className="text-sm text-slate-900 mt-1">{audit.marketingAgencyPresence?.marketingMaturity}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Strategy Gaps */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-red-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Strategy & Creative Gaps</h2>
-                        </div>
-                        <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-4">
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">CRO Opportunities</h3>
-                                        <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.croOpportunities}</p>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Messaging Gaps</h3>
-                                        <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.messagingGaps}</p>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Content Strategy</h3>
-                                        <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.contentCadence}</p>
-                                    </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Ad Fatigue</h3>
+                                    <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.adFatigue}</p>
                                 </div>
-                                <div className="space-y-4">
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Ad Fatigue</h3>
-                                        <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.adFatigue}</p>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Landing Pages</h3>
-                                        <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.landingAlignment}</p>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Email Foundation</h3>
-                                        <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.emailBasics}</p>
-                                    </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Landing Pages</h3>
+                                    <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.landingAlignment}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-2">Email Foundation</h3>
+                                    <p className="text-slate-600 text-sm">{audit.creativeStrategyGaps?.emailBasics}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Industry Opportunities */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-indigo-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Industry Opportunities</h2>
+                {/* Industry Opportunities */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-indigo-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Industry Opportunities</h2>
+                    </div>
+                    <div className="p-6 space-y-3">
+                        <div className="p-3 bg-indigo-50 rounded-lg">
+                            <div className="text-xs text-indigo-600 uppercase tracking-wide font-medium">Content Formats</div>
+                            <div className="text-sm text-slate-900 mt-1">{audit.industryOpportunities?.formats}</div>
                         </div>
-                        <div className="p-6 space-y-3">
-                            <div className="p-3 bg-indigo-50 rounded-lg">
-                                <div className="text-xs text-indigo-600 uppercase tracking-wide font-medium">Content Formats</div>
-                                <div className="text-sm text-slate-900 mt-1">{audit.industryOpportunities?.formats}</div>
-                            </div>
-                            <div className="p-3 bg-indigo-50 rounded-lg">
-                                <div className="text-xs text-indigo-600 uppercase tracking-wide font-medium">Messaging Hooks</div>
-                                <div className="text-sm text-slate-900 mt-1">{audit.industryOpportunities?.hooks}</div>
-                            </div>
-                            <div className="p-3 bg-indigo-50 rounded-lg">
-                                <div className="text-xs text-indigo-600 uppercase tracking-wide font-medium">Platform Shifts</div>
-                                <div className="text-sm text-slate-900 mt-1">{audit.industryOpportunities?.platformShifts}</div>
-                            </div>
+                        <div className="p-3 bg-indigo-50 rounded-lg">
+                            <div className="text-xs text-indigo-600 uppercase tracking-wide font-medium">Messaging Hooks</div>
+                            <div className="text-sm text-slate-900 mt-1">{audit.industryOpportunities?.hooks}</div>
+                        </div>
+                        <div className="p-3 bg-indigo-50 rounded-lg">
+                            <div className="text-xs text-indigo-600 uppercase tracking-wide font-medium">Platform Shifts</div>
+                            <div className="text-sm text-slate-900 mt-1">{audit.industryOpportunities?.platformShifts}</div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Competitive Analysis */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-rose-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Competitive Analysis</h2>
+                {/* Competitive Analysis */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-rose-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Competitive Analysis</h2>
+                    </div>
+                    <div className="p-6 space-y-3">
+                        {audit.competitiveBenchmark?.topCompetitors?.map((competitor, index) => (
+                            <div key={index} className="p-3 bg-rose-50 rounded-lg">
+                                <h4 className="text-sm font-semibold text-slate-900 mb-2">{competitor.name}</h4>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                                    <div>Social: {competitor.socialCadence}</div>
+                                    <div>Ads: {competitor.adVariants}</div>
+                                    <div>Speed: {competitor.siteSpeed}</div>
+                                    <div>Proof: {competitor.proofDensity}</div>
+                                </div>
+                            </div>
+                        ))}
+                        <div className="p-3 bg-rose-50 rounded-lg">
+                            <div className="text-xs text-rose-600 uppercase tracking-wide font-medium">Competitive Advantage</div>
+                            <div className="text-sm text-slate-900 mt-1">{audit.competitiveBenchmark?.competitiveAdvantage}</div>
                         </div>
-                        <div className="p-6 space-y-3">
-                            {audit.competitiveBenchmark?.topCompetitors?.map((competitor, index) => (
-                                <div key={index} className="p-3 bg-rose-50 rounded-lg">
-                                    <h4 className="text-sm font-semibold text-slate-900 mb-2">{competitor.name}</h4>
-                                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
-                                        <div>Social: {competitor.socialCadence}</div>
-                                        <div>Ads: {competitor.adVariants}</div>
-                                        <div>Speed: {competitor.siteSpeed}</div>
-                                        <div>Proof: {competitor.proofDensity}</div>
+                    </div>
+                </div>
+
+                {/* Hiring & Talent */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-emerald-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Hiring & Talent</h2>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <p className="text-slate-700">{audit.hiringTalentStrategy?.growthStaffing}</p>
+                        <p className="text-slate-700">{audit.hiringTalentStrategy?.talentGaps}</p>
+                        <div className="p-3 bg-emerald-50 rounded-lg">
+                            <div className="text-xs text-emerald-600 uppercase tracking-wide font-medium">Hiring Signals</div>
+                            <div className="text-sm text-slate-900 mt-1">{audit.hiringTalentStrategy?.hiringSignals}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Immediate ROI Actions */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-slate-50 to-amber-50 px-6 py-4 border-b border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Immediate ROI Actions</h2>
+                    </div>
+                    <div className="p-6">
+                        <div className="space-y-4">
+                            {audit.immediateROIMoves?.map((move, index) => (
+                                <div key={index} className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                                    <h3 className="font-semibold text-slate-900 mb-3">{move.action}</h3>
+                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <span className="text-amber-600 font-medium">Owner:</span>
+                                            <div className="text-slate-700">{move.owner}</div>
+                                        </div>
+                                        <div>
+                                            <span className="text-amber-600 font-medium">Expected Lift:</span>
+                                            <div className="text-slate-700">{move.expectedLift}</div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <span className="text-amber-600 font-medium">Steps:</span>
+                                            <div className="text-slate-700 mt-1">{move.steps}</div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <span className="text-amber-600 font-medium">Metric:</span>
+                                            <div className="text-slate-700 mt-1">{move.metric}</div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
-                            <div className="p-3 bg-rose-50 rounded-lg">
-                                <div className="text-xs text-rose-600 uppercase tracking-wide font-medium">Competitive Advantage</div>
-                                <div className="text-sm text-slate-900 mt-1">{audit.competitiveBenchmark?.competitiveAdvantage}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Hiring & Talent */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-emerald-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Hiring & Talent</h2>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-slate-700">{audit.hiringTalentStrategy?.growthStaffing}</p>
-                            <p className="text-slate-700">{audit.hiringTalentStrategy?.talentGaps}</p>
-                            <div className="p-3 bg-emerald-50 rounded-lg">
-                                <div className="text-xs text-emerald-600 uppercase tracking-wide font-medium">Hiring Signals</div>
-                                <div className="text-sm text-slate-900 mt-1">{audit.hiringTalentStrategy?.hiringSignals}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Immediate ROI Actions */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-50 to-amber-50 px-6 py-4 border-b border-slate-200">
-                            <h2 className="text-lg font-semibold text-slate-900">Immediate ROI Actions</h2>
-                        </div>
-                        <div className="p-6">
-                            <div className="space-y-4">
-                                {audit.immediateROIMoves?.map((move, index) => (
-                                    <div key={index} className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
-                                        <h3 className="font-semibold text-slate-900 mb-3">{move.action}</h3>
-                                        <div className="grid grid-cols-2 gap-3 text-sm">
-                                            <div>
-                                                <span className="text-amber-600 font-medium">Owner:</span>
-                                                <div className="text-slate-700">{move.owner}</div>
-                                            </div>
-                                            <div>
-                                                <span className="text-amber-600 font-medium">Expected Lift:</span>
-                                                <div className="text-slate-700">{move.expectedLift}</div>
-                                            </div>
-                                            <div className="col-span-2">
-                                                <span className="text-amber-600 font-medium">Steps:</span>
-                                                <div className="text-slate-700 mt-1">{move.steps}</div>
-                                            </div>
-                                            <div className="col-span-2">
-                                                <span className="text-amber-600 font-medium">Metric:</span>
-                                                <div className="text-slate-700 mt-1">{move.metric}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Snackbar */}
-                {snackbar.open && (
+            {/* Snackbar */}
+            {
+                snackbar.open && (
                     <div className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${snackbar.severity === 'success' ? 'bg-green-500 text-white' :
                         snackbar.severity === 'error' ? 'bg-red-500 text-white' :
                             snackbar.severity === 'warning' ? 'bg-yellow-500 text-white' :
@@ -795,9 +951,98 @@ Make the audit significantly more comprehensive and actionable. Return ONLY the 
                             ×
                         </button>
                     </div>
-                )}
-            </div>
-        </div>
+                )
+            }
+
+            {/* Custom Enhancement Modal */}
+            {
+                showCustomEnhanceModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4">
+                            <h3 className="text-lg font-semibold mb-4">📝 Custom Enhancement</h3>
+                            <p className="text-gray-600 mb-4">
+                                What would you like to enhance? Be specific about the areas you want improved.
+                            </p>
+                            <textarea
+                                value={enhancementPoints}
+                                onChange={(e) => setEnhancementPoints(e.target.value)}
+                                placeholder="Example: Focus more on financial analysis, add competitor pricing, expand marketing strategy section, include implementation timelines..."
+                                className="w-full p-3 border border-gray-300 rounded-md mb-4 h-32 resize-none"
+                            />
+                            <div className="bg-blue-50 p-3 rounded-md mb-4">
+                                <p className="text-sm text-blue-800">
+                                    <strong>Examples:</strong>
+                                </p>
+                                <ul className="text-sm text-blue-700 mt-1 list-disc list-inside">
+                                    <li>"Add more financial analysis and projections"</li>
+                                    <li>"Expand competitor research section"</li>
+                                    <li>"Focus on marketing strategy and ROI"</li>
+                                    <li>"Include implementation roadmaps"</li>
+                                </ul>
+                            </div>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    onClick={() => setShowCustomEnhanceModal(false)}
+                                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={enhanceCustomAudit}
+                                    disabled={!enhancementPoints.trim() || isEnhancing}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400"
+                                >
+                                    {isEnhancing ? 'Enhancing...' : '🎯 Enhance'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Auto-Enhance Modal */}
+            {
+                showAutoEnhanceModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-6 rounded-lg max-w-2xl w-full mx-4">
+                            <h3 className="text-lg font-semibold mb-4">🚀 Auto-Enhance All</h3>
+                            <p className="text-gray-600 mb-4">
+                                This will automatically enhance your audit to include comprehensive analysis and insights.
+                            </p>
+                            <div className="bg-green-50 p-4 rounded-md mb-4">
+                                <p className="text-sm text-green-800 font-medium mb-2">
+                                    What will be enhanced:
+                                </p>
+                                <ul className="text-sm text-green-700 space-y-1">
+                                    <li>✅ Detailed financial analysis and projections</li>
+                                    <li>✅ Expanded competitor research and intelligence</li>
+                                    <li>✅ Enhanced marketing insights and strategies</li>
+                                    <li>✅ Strategic recommendations with roadmaps</li>
+                                    <li>✅ Implementation plans with timelines</li>
+                                    <li>✅ Industry benchmarks and data</li>
+                                    <li>✅ Professional executive formatting</li>
+                                </ul>
+                            </div>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    onClick={() => setShowAutoEnhanceModal(false)}
+                                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={enhanceAutoAudit}
+                                    disabled={isEnhancing}
+                                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+                                >
+                                    {isEnhancing ? 'Enhancing...' : '🚀 Auto-Enhance'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
