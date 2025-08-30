@@ -26,15 +26,18 @@ const MainDashboard = ({ onAddCompany }) => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
                 {/* Welcome Section */}
                 <div className="text-center mb-12 sm:mb-16">
+                    {/* Beta Version Badge */}
+                    <div className="inline-flex items-center px-4 py-2 mb-6 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-bold rounded-full shadow-lg animate-pulse">
+                        <span className="w-2 h-2 bg-white rounded-full mr-2 animate-ping"></span>
+                        🚧 BETA VERSION - STILL IN DEVELOPMENT
+                    </div>
+                    
                     <h2 className={`text-2xl sm:text-3xl font-bold ${textColor} mb-4 sm:mb-6`}>
                         Welcome to Your Dashboard
                     </h2>
                     <p className={`${secondaryTextColor} text-base sm:text-lg max-w-2xl mx-auto px-4`}>
                         Choose your audit approach and start generating comprehensive business insights
                     </p>
-
-                    {/* Test Navigation Button */}
-
                 </div>
 
                 {/* Quick Actions */}
