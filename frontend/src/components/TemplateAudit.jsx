@@ -95,12 +95,22 @@ const templates = [
 
 const TemplateAudit = ({ onBack, onSelectTemplate }) => {
     const [selectedTemplate, setSelectedTemplate] = useState(null);
-    const [showDevelopmentPopup, setShowDevelopmentPopup] = useState(false);
+    const [showUrlInput, setShowUrlInput] = useState(false);
+    const [companyUrl, setCompanyUrl] = useState('');
     const { theme } = useContext(ThemeContext);
 
     const handleTemplateSelect = (template) => {
         setSelectedTemplate(template);
-        setShowDevelopmentPopup(true);
+        setShowUrlInput(true);
+    };
+
+    const handleGenerateAudit = () => {
+        if (companyUrl.trim()) {
+            // Here you can add logic to generate the audit
+            console.log(`Generating ${selectedTemplate.title} audit for: ${companyUrl}`);
+            // For now, redirect to company form with the URL
+            window.location.href = `/company-form?url=${encodeURIComponent(companyUrl)}`;
+        }
     };
 
     // Theme-based styling
@@ -238,39 +248,58 @@ const TemplateAudit = ({ onBack, onSelectTemplate }) => {
                 </div>
             </div>
 
-            {/* Development Popup Modal */}
-            {showDevelopmentPopup && (
+                        {/* URL Input Modal */}
+            {showUrlInput && selectedTemplate && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className={`${cardBg} rounded-3xl p-8 max-w-md w-full mx-4 ${shadow} border ${cardBorder}`}>
                         <div className="text-center">
                             {/* Icon */}
-                            <div className="text-6xl mb-6">🚧</div>
-                            
+                            <div className="text-4xl mb-4">{selectedTemplate.icon}</div>
+
                             {/* Title */}
-                            <h3 className={`text-2xl font-bold ${textColor} mb-4`}>
-                                Still in Development
+                            <h3 className={`text-2xl font-bold ${textColor} mb-2`}>
+                                {selectedTemplate.title}
                             </h3>
-                            
+
                             {/* Message */}
                             <p className={`${secondaryTextColor} mb-6 text-base leading-relaxed`}>
-                                The template-based audit feature is currently being developed. 
-                                In the meantime, you can use our custom audit option which is fully functional!
+                                Enter the company website URL to generate your {selectedTemplate.title.toLowerCase()} audit
                             </p>
-                            
+
+                            {/* URL Input */}
+                            <div className="mb-6">
+                                <input
+                                    type="url"
+                                    value={companyUrl}
+                                    onChange={(e) => setCompanyUrl(e.target.value)}
+                                    placeholder="https://example.com"
+                                    className={`w-full px-4 py-3 border ${isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-white'} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00b894] focus:border-transparent transition-all duration-200 ${textColor}`}
+                                />
+                            </div>
+
                             {/* Buttons */}
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                 <button
-                                    onClick={() => window.location.href = '/company-form'}
-                                    className="px-6 py-3 bg-gradient-to-r from-[#00b894] to-[#00a085] text-white font-bold rounded-xl hover:from-[#00a085] hover:to-[#009874] transition-all duration-300 shadow-lg text-sm"
+                                    onClick={handleGenerateAudit}
+                                    disabled={!companyUrl.trim()}
+                                    className={`px-6 py-3 font-bold rounded-xl transition-all duration-300 shadow-lg text-sm ${
+                                        companyUrl.trim() 
+                                            ? 'bg-gradient-to-r from-[#00b894] to-[#00a085] text-white hover:from-[#00a085] hover:to-[#009874]' 
+                                            : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                    }`}
                                 >
-                                    🛠️ Use Custom Audit (Beta)
+                                    ⚡ Generate Audit
                                 </button>
-                                
+
                                 <button
-                                    onClick={() => setShowDevelopmentPopup(false)}
+                                    onClick={() => {
+                                        setShowUrlInput(false);
+                                        setCompanyUrl('');
+                                        setSelectedTemplate(null);
+                                    }}
                                     className={`px-6 py-3 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} ${textColor} font-bold rounded-xl transition-all duration-300 text-sm`}
                                 >
-                                    Close
+                                    Cancel
                                 </button>
                             </div>
                         </div>
