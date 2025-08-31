@@ -537,7 +537,7 @@ IMPORTANT: Return ONLY valid JSON. No other text.`
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900 mb-2">Company Details Form</h1>
                             <p className="text-gray-600">Fill in the company information to generate AI-powered CRM insights</p>
-                            
+
                             {/* Beta Version Badge */}
                             <div className="inline-flex items-center px-4 py-2 mt-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-bold rounded-full shadow-lg animate-pulse">
                                 <span className="w-2 h-2 bg-white rounded-full mr-2 animate-ping"></span>

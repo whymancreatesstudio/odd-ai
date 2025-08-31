@@ -31,7 +31,7 @@ const MainDashboard = ({ onAddCompany }) => {
                         <span className="w-2 h-2 bg-white rounded-full mr-2 animate-ping"></span>
                         🚧 BETA VERSION - STILL IN DEVELOPMENT
                     </div>
-                    
+
                     <h2 className={`text-2xl sm:text-3xl font-bold ${textColor} mb-4 sm:mb-6`}>
                         Welcome to Your Dashboard
                     </h2>
@@ -73,9 +73,15 @@ const MainDashboard = ({ onAddCompany }) => {
                             </p>
                             <button
                                 onClick={onAddCompany}
-                                className={`px-6 sm:px-8 py-3 sm:py-4 ${isDark ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700' : 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600'} text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl border ${isDark ? 'border-gray-600' : 'border-gray-500'} text-sm sm:text-base`}
+                                className={`px-6 sm:px-8 py-3 sm:py-4 bg-transparent text-white font-bold rounded-lg transition-all duration-300 shadow-md hover:shadow-lg  text-sm sm:text-base relative overflow-hidden`}
                             >
-                                Start Custom Audit
+                                <span className="relative z-10">Start Custom Audit</span>
+
+                                {/* Rainbow Glowing Border - Always On (like screenshot) */}
+                                <div className="absolute inset-0 rounded-lg border-2 border-transparent bg-gradient-to-r from-[#ff0000] via-[#ff7300] via-[#fffb00] via-[#48ff00] via-[#00ffd5] via-[#002bff] via-[#7a00ff] via-[#ff00c8] to-[#ff0000] bg-[length:400%_100%]"></div>
+
+                                {/* Glow Shadow - Always On */}
+                                <div className="absolute inset-0 rounded-lg shadow-[0_0_20px_rgba(255,0,0,0.6),0_0_40px_rgba(255,0,0,0.4),0_0_60px_rgba(255,0,0,0.2)]"></div>
                             </button>
                         </div>
                     </div>
